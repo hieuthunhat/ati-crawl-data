@@ -9,5 +9,4 @@ router.get("/", (req, res) => {
 
 router.post("/crawledProducts", getProductsData);
 
-
 export default router;

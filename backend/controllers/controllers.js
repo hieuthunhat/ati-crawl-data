@@ -59,9 +59,9 @@ export const getProductsData = async (req, res) => {
         console.log(`${scoredProducts.length} products passed quality thresholds`);
 
         if (scoredProducts.length > 0) {
-          // AI evaluation (top 20 products)
+          // AI evaluation (top 10 products to avoid response truncation)
           console.log('Step 2/3: AI evaluation with Gemini 2.0 Flash...');
-          const topProducts = scoredProducts.slice(0, 20);
+          const topProducts = scoredProducts.slice(0, 10);
           const aiEvaluation = await geminiService.evaluateProducts(
             topProducts.map(sp => {
               const original = scrapedProducts.find(p => p.id === sp.productId);
@@ -75,11 +75,22 @@ export const getProductsData = async (req, res) => {
           if (storeResults) {
             console.log('Step 3/3: Storing results in Firebase...');
             
+            // Clean scraped products - remove undefined values
+            const cleanedScrapedProducts = scrapedProducts.map(product => {
+              const cleaned = {};
+              Object.keys(product).forEach(key => {
+                if (product[key] !== undefined) {
+                  cleaned[key] = product[key];
+                }
+              });
+              return cleaned;
+            });
+            
             const collection = getAICollection();
             const docData = {
               evaluation: aiEvaluation.evaluation,
               scoredProducts,
-              scrapedProducts, // Include original scraped data
+              scrapedProducts: cleanedScrapedProducts, // Use cleaned data
               metadata: {
                 ...aiEvaluation.metadata,
                 platform,

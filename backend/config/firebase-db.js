@@ -9,7 +9,7 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const serviceAccountPath = path.join(__dirname, "service-account.json");
+const serviceAccountPath = path.join(__dirname, "firebase-service-account.json");
 const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, "utf8"));
 
 // Initialize Firebase Admin (only once)
@@ -22,12 +22,12 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// 🆕 Helper function to get AI evaluations collection
+// Helper function to get AI evaluations collection
 export const getAICollection = () => {
   return db.collection(process.env.FIREBASE_AI_COLLECTION || 'ai-evaluations');
 };
 
-// 🆕 Helper function to get other collections
+// Helper function to get other collections
 export const getCollection = (collectionName) => {
   return db.collection(collectionName);
 };
@@ -35,6 +35,6 @@ export const getCollection = (collectionName) => {
 // Export existing db and admin
 export { db, admin };
 
-console.log('✅ Firebase initialized');
-console.log(`📊 AI Collection: ${process.env.FIREBASE_AI_COLLECTION || 'ai-evaluations'}`);
+console.log('Firebase initialized');
+console.log(`AI Collection: ${process.env.FIREBASE_AI_COLLECTION || 'ai-evaluations'}`);
 

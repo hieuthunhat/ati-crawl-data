@@ -10,9 +10,9 @@ const aiConfig = {
   // Gemini AI configuration
   gemini: {
     apiKey: process.env.GEMINI_API_KEY,
-    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp',
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite',
     temperature: parseFloat(process.env.GEMINI_TEMPERATURE) || 0.7,
-    maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS) || 2048,
+    maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS) || 16384, // Increased to prevent truncation (max for Gemini)
   },
 
   // Firebase configuration (separate collection for AI)
@@ -42,6 +42,12 @@ const aiConfig = {
     tier1: { min: 1, max: 50, markup: 0.20 },
     tier2: { min: 51, max: 200, markup: 0.30 },
     tier3: { min: 201, max: Infinity, markup: 0.40 },
+  },
+
+  // Shopify fees for profit calculation
+  fees: {
+    shopifyTransactionFee: 0.029, // 2.9%
+    shopifyFixedFee: 0.30, // $0.30 per transaction
   },
 };
 

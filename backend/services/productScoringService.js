@@ -109,10 +109,10 @@ export const scoreProduct = (product, criteria = {}) => {
   const weights = criteria.weights || aiConfig.defaultWeights;
   const thresholds = criteria.thresholds || aiConfig.defaultThresholds;
 
-  // Extract product data
+  // Extract product data - handle both Tiki and eBay/Chotot field names
   const costPrice = product.price || 0;
-  const rating = product.rating_average || 0;
-  const reviewCount = product.review_count || 0;
+  const rating = product.rating_average || product.rating || 0;
+  const reviewCount = product.review_count || product.reviewCount || 0;
 
   // Calculate pricing
   const sellingPrice = calculateSellingPrice(costPrice);
@@ -125,15 +125,28 @@ export const scoreProduct = (product, criteria = {}) => {
   const finalScore = calculateFinalScore(profitScore, reviewScore, trendScore, weights);
 
   // Check if meets thresholds
+  // For products with reviews: require minimum rating and review count
+  // For products without reviews: only check profit margin and final score
+  const hasReviews = reviewCount > 0;
+  const meetsReviewThresholds = hasReviews 
+    ? (rating >= thresholds.minReviewScore && reviewCount >= thresholds.minReviewCount)
+    : true; // Allow products without reviews if other criteria are met
+    
   const meetsThresholds = 
-    rating >= thresholds.minReviewScore &&
-    reviewCount >= thresholds.minReviewCount &&
+    meetsReviewThresholds &&
     profit.profitMargin >= (thresholds.minProfitMargin * 100) &&
     finalScore >= thresholds.minFinalScore;
 
+  // Generate productId if missing (for eBay/Chotot products)
+  const productId = product.id || 
+                    (product.link ? product.link.split('/').pop() : null) ||
+                    `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  const productName = product.name || product.title || 'Unknown Product';
+
   return {
-    productId: product.id,
-    productName: product.name,
+    productId,
+    productName,
     costPrice,
     sellingPrice: profit.sellingPrice,
     netProfit: profit.netProfit,
@@ -155,6 +168,19 @@ export const scoreProduct = (product, criteria = {}) => {
  */
 export const scoreProducts = (products, criteria = {}) => {
   console.log(`Scoring ${products.length} products...`);
+  
+  // Debug: Show sample product data
+  if (products.length > 0) {
+    const sample = products[0];
+    console.log('Sample product fields:', {
+      hasRatingAverage: !!sample.rating_average,
+      hasRating: !!sample.rating,
+      hasReviewCount: !!sample.review_count,
+      hasReviewCountAlt: !!sample.reviewCount,
+      price: sample.price,
+      name: sample.name || sample.title
+    });
+  }
 
   const scored = products
     .map(p => scoreProduct(p, criteria))
@@ -162,6 +188,27 @@ export const scoreProducts = (products, criteria = {}) => {
     .sort((a, b) => b.scores.finalScore - a.scores.finalScore);
 
   console.log(`${scored.length}/${products.length} products meet criteria`);
+  
+  // Debug: Show why products failed (first 3)
+  if (scored.length === 0 && products.length > 0) {
+    console.log('\n⚠️ DEBUG: First 3 products and why they failed:');
+    products.slice(0, 3).forEach((p, i) => {
+      const result = scoreProduct(p, criteria);
+      const thresholds = criteria.thresholds || aiConfig.defaultThresholds;
+      console.log(`\nProduct ${i + 1}: ${result.productName?.substring(0, 40) || 'N/A'}`);
+      console.log('  Rating:', result.rating, '(need ≥', thresholds.minReviewScore + ')');
+      console.log('  Reviews:', result.reviewCount, '(need ≥', thresholds.minReviewCount + ')');
+      console.log('  Profit Margin:', result.profitMargin.toFixed(2) + '%', '(need ≥', (thresholds.minProfitMargin * 100) + '%)');
+      console.log('  Final Score:', result.scores.finalScore.toFixed(2), '(need ≥', thresholds.minFinalScore + ')');
+      console.log('  Failed because:', 
+        result.rating < thresholds.minReviewScore ? '❌ Low rating' : '',
+        result.reviewCount < thresholds.minReviewCount ? '❌ Low review count' : '',
+        result.profitMargin < (thresholds.minProfitMargin * 100) ? '❌ Low profit' : '',
+        result.scores.finalScore < thresholds.minFinalScore ? '❌ Low final score' : ''
+      );
+    });
+    console.log('\n💡 TIP: Lower thresholds in ai-config.js or pass custom criteria\n');
+  }
 
   return scored;
 };

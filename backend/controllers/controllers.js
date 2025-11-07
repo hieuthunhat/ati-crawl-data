@@ -62,11 +62,35 @@ export const getProductsData = async (req, res) => {
           // AI evaluation (top 10 products to avoid response truncation)
           console.log('Step 2/3: AI evaluation with Gemini 2.0 Flash...');
           const topProducts = scoredProducts.slice(0, 10);
+          
+          // Map scored products back to original products
+          const productsForAI = topProducts.map(sp => {
+            // Try to find by ID first (Tiki products)
+            let original = scrapedProducts.find(p => p.id === sp.productId);
+            
+            // If not found by ID, try matching by name/title (eBay/Chotot products)
+            if (!original) {
+              original = scrapedProducts.find(p => 
+                (p.name || p.title) === sp.productName
+              );
+            }
+            
+            // If still not found, try matching by link (extract ID from link)
+            if (!original && sp.productId) {
+              original = scrapedProducts.find(p => 
+                p.link && p.link.includes(sp.productId)
+              );
+            }
+            
+            return original;
+          }).filter(p => p !== undefined); // Remove any unmatched products
+          
+          if (productsForAI.length === 0) {
+            throw new Error('Failed to map scored products to original products');
+          }
+          
           const aiEvaluation = await geminiService.evaluateProducts(
-            topProducts.map(sp => {
-              const original = scrapedProducts.find(p => p.id === sp.productId);
-              return original;
-            }),
+            productsForAI,
             criteria
           );
 

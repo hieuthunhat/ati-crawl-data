@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Evaluator - Phân tích sản phẩm dropshipping</title>
+    <link rel="stylesheet" href="./main.css">
+
+</head>
+<body>
+<!-- Header/Navbar -->
+<header>
+    <nav>
+        <a href="#" class="logo">
+            🌶️ Cửa hàng Ớt
+        </a>
+        <ul class="nav-menu">
+            <li><a href="index.html">Trang chủ</a></li>
+            <li><a href="#">Phân tích sản phẩm</a></li>
+            <li><a href="#account">👤 Tài khoản</a></li>
+        </ul>
+    </nav>
+</header>
+
+<!-- Main Content -->
+<div class="container" aria-live="polite">
+    <!-- Header -->
+    <div class="card">
+        <div class="header">
+            <div class="header-title">
+                <div class="icon">📦</div>
+                <div>
+                    <h1>Product Evaluator</h1>
+                    <p>Phân tích & đánh giá sản phẩm dropshipping</p>
+                </div>
+            </div>
+        </div>
+        <div class="stats-bar" id="statsBar" style="display:none;">
+            <div class="stat-item">
+                <span class="stat-icon">✓</span>
+                <span>Tìm thấy: <strong id="totalProducts">0</strong> sản phẩm</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon">☑</span>
+                <span>Đã chọn: <strong id="selectedCount">0</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="card">
+        <div id="toast" class="alert hidden"></div>
+
+        <div class="search-section">
+            <h2>Tìm kiếm sản phẩm</h2>
+            <form id="searchForm">
+                <div class="search-grid">
+                    <div class="form-group">
+                        <label for="productName">Tên sản phẩm / Từ khóa *</label>
+                        <input type="text" id="productName" placeholder='VD: "tai nghe", "iphone"' required>
+                    </div>
+                    <div class="form-group">
+                        <label for="platform">Platform *</label>
+                        <select id="platform" required>
+                            <option value="">Chọn platform</option>
+                            <option value="tiki">Tiki</option>
+                            <option value="shopee">Shopee</option>
+                            <option value="lazada">Lazada</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:15px;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="storeResults" checked>
+                        <span>Lưu kết quả vào Firebase</span>
+                    </label>
+                </div>
+
+                <div class="btn-group" style="margin-top:20px;">
+                    <button type="submit" class="btn btn-primary" id="btnSearch">
+                        <span>🔍</span> Tìm kiếm & Đánh giá
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="btnAdvanced">
+                        <span>⚙️</span> Cấu hình nâng cao
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Advanced Configuration -->
+        <div class="collapsible-content" id="advancedSection">
+            <h3 style="margin-bottom: 1.5rem; color: #2d3748;">⚙️ Cấu hình nâng cao</h3>
+
+            <h4 style="margin-bottom: 1rem; color: #4a5568;">Trọng số đánh giá (tổng = 1.0)</h4>
+            <div class="filters-grid">
+                <div class="slider-group">
+                    <label for="profitWeight">Lợi nhuận (profitWeight)</label>
+                    <input type="range" id="profitWeight" min="0" max="1" step="0.1" value="0.4">
+                    <div class="slider-value"><span id="profitWeightValue">0.4</span></div>
+                </div>
+                <div class="slider-group">
+                    <label for="reviewWeight">Đánh giá (reviewWeight)</label>
+                    <input type="range" id="reviewWeight" min="0" max="1" step="0.1" value="0.4">
+                    <div class="slider-value"><span id="reviewWeightValue">0.4</span></div>
+                </div>
+                <div class="slider-group">
+                    <label for="trendWeight">Xu hướng (trendWeight)</label>
+                    <input type="range" id="trendWeight" min="0" max="1" step="0.1" value="0.2">
+                    <div class="slider-value"><span id="trendWeightValue">0.2</span></div>
+                </div>
+            </div>
+
+            <h4 style="margin: 2rem 0 1rem; color: #4a5568;">Ngưỡng tối thiểu</h4>
+            <div class="filters-grid">
+                <div class="slider-group">
+                    <label for="minReviewScore">Điểm đánh giá (minReviewScore)</label>
+                    <input type="range" id="minReviewScore" min="0" max="5" step="0.5" value="4">
+                    <div class="slider-value"><span id="minReviewScoreValue">4.0</span> ⭐</div>
+                </div>
+                <div class="slider-group">
+                    <label for="minReviewCount">Số lượng review (minReviewCount)</label>
+                    <input type="range" id="minReviewCount" min="0" max="500" step="10" value="10">
+                    <div class="slider-value"><span id="minReviewCountValue">10</span></div>
+                </div>
+                <div class="slider-group">
+                    <label for="minProfitMargin">Biên lợi nhuận (minProfitMargin)</label>
+                    <input type="range" id="minProfitMargin" min="0" max="1" step="0.05" value="0.20">
+                    <div class="slider-value"><span id="minProfitMarginValue">0.20</span> (20%)</div>
+                </div>
+                <div class="slider-group">
+                    <label for="minFinalScore">Điểm tổng (minFinalScore)</label>
+                    <input type="range" id="minFinalScore" min="0" max="1" step="0.05" value="0.50">
+                    <div class="slider-value"><span id="minFinalScoreValue">0.50</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p id="loadingText">Đang tìm kiếm sản phẩm...</p>
+    </div>
+
+    <!-- Products Grid -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:1rem;">
+        <h2 style="color:#2d3748;">Chọn sản phẩm</h2>
+        <div class="btn-group">
+            <button class="btn btn-success" id="btnSelectAll">
+                <span>☑</span> Chọn tất cả
+            </button>
+            <button class="btn btn-secondary" id="btnClear">
+                <span>✕</span> Bỏ chọn tất cả
+            </button>
+            <button class="btn btn-info" id="btnReload">
+                <span>🔄</span> Tải lại
+            </button>
+            <button class="btn btn-primary" id="btnSubmitSelected">
+                <span>✓</span> Submit đã chọn
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div class="card" id="successSection" style="display:none;">
+        <div style="text-align:center;padding:2rem;">
+            <div style="font-size:4rem;margin-bottom:1rem;">✅</div>
+            <h2 style="color:#2d3748;margin-bottom:1rem;">Submit thành công!</h2>
+            <p style="color:#666;margin-bottom:2rem;">Đã gửi <strong id="submittedCount">0</strong> sản phẩm</p>
+            <button class="btn btn-primary" onclick="location.reload()">
+                <span>🔄</span> Tìm kiếm mới
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer>
+    <div class="footer-content">
+        <div class="footer-section">
+            <h3>Về chúng tôi</h3>
+            <ul>
+                <li><a href="#about">Giới thiệu</a></li>
+                <li><a href="#terms">Điều khoản sử dụng</a></li>
+                <li><a href="#privacy">Chính sách bảo mật</a></li>
+                <li><a href="#shipping">Chính sách vận chuyển</a></li>
+            </ul>
+        </div>
+        <div class="footer-section">
+            <h3>Hỗ trợ khách hàng</h3>
+            <ul>
+                <li><a href="#faq">Câu hỏi thường gặp</a></li>
+                <li><a href="#return">Chính sách đổi trả</a></li>
+                <li><a href="#payment">Hướng dẫn thanh toán</a></li>
+            </ul>
+        </div>
+        <div class="footer-section">
+            <h3>Liên hệ</h3>
+            <ul>
+                <li>📧 Email: shop@chili.vn</li>
+                <li>📞 Hotline: 1900 xxxx</li>
+                <li>📍 Hà Nội, Việt Nam</li>
+            </ul>
+            <div class="social-links">
+                <a href="#" title="Facebook">FB</a>
+                <a href="#" title="Zalo">Z</a>
+                <a href="#" title="Instagram">IG</a>
+            </div>
+        </div>
+    </div>
+    <div class="copyright">
+        <p>&copy; 2025 Cửa hàng Ớt. All rights reserved.</p>
+    </div>
+</footer>
+<script src="./main.js"></script>
+
+</body>
+</html>

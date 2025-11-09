@@ -125,9 +125,9 @@ async function scrapeTikiWithAPI({ keyword = null, categoryId = null, pages = 3,
     console.error(`❌ Lỗi nghiêm trọng:`, err.message);
   }
 
-  const outputFile = "tiki_products.json";
-  fs.writeFileSync(outputFile, JSON.stringify(results, null, 2));
-  console.log(`\n✅ Đã lưu ${results.length} sản phẩm vào ${outputFile}`);
+  // const outputFile = "tiki_products.json";
+  // fs.writeFileSync(outputFile, JSON.stringify(results, null, 2));
+  // console.log(`\n✅ Đã lưu ${results.length} sản phẩm vào ${outputFile}`);
 
   return results;
 }

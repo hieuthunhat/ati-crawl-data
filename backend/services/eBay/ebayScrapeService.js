@@ -156,7 +156,7 @@ async function scrapeEbayWithPuppeteer({keyword, pages = 3, options = {}}) {
   // Normalize product data before returning
   const normalizedProducts = normalizeEbayProducts(results);
   
-  fs.writeFileSync("ebay_products.json", JSON.stringify(normalizedProducts, null, 2));
+  // fs.writeFileSync("ebay_products.json", JSON.stringify(normalizedProducts, null, 2));
 
   return normalizedProducts;
 }

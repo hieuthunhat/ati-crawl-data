@@ -23,13 +23,6 @@ app.get("/", (req, res) => {
     endpoints: {
       crawling: {
         products: "POST /api/crawledProducts"
-      },
-      ai: {
-        evaluate: "POST /api/ai/evaluate",
-        getAll: "GET /api/ai/evaluations",
-        getOne: "GET /api/ai/evaluations/:id",
-        delete: "DELETE /api/ai/evaluations/:id",
-        config: "GET /api/ai/config"
       }
     },
     documentation: "See README.md and API_DOCUMENTATION.md"

@@ -1,7 +1,7 @@
 let selectedProducts = new Set();
 
-// ✅ Cấu hình API backend
-const API_BASE_URL = "http://localhost:3000"; // sửa lại nếu port/host khác
+// Cấu hình API backend
+const API_BASE_URL = "http://localhost:3000";
 
 // Initialize slider values
 const sliders = [
@@ -79,10 +79,14 @@ document.getElementById('searchForm').addEventListener('submit', async (e) => {
     document.getElementById('loadingText').textContent = 'Đang lấy dữ liệu sản phẩm từ backend...';
 
     try {
-        // ✅ GỌI API BACKEND /product (GET)
+        // GỌI API BACKEND /product (GET)
         // Nếu backend là app.use("/product", productRoutes) thì endpoint là /product
         // const res = await fetch(`${API_BASE_URL}/product`);
-        const res = await fetch(`http://localhost:3000/products`);
+        const res = await fetch(`${API_BASE_URL}/products`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestData),
+        });
 
 
         if (!res.ok) {
@@ -164,7 +168,7 @@ document.getElementById('btnClear').addEventListener('click', () => {
     showToast('Đã bỏ chọn tất cả sản phẩm', 'success');
 });
 
-// Submit selected products
+// Submit các product đẫ chọn
 document.getElementById('btnSubmitSelected').addEventListener('click', async () => {
     if (selectedProducts.size === 0) {
         showToast('Vui lòng chọn ít nhất 1 sản phẩm!', 'error');
@@ -176,24 +180,56 @@ document.getElementById('btnSubmitSelected').addEventListener('click', async () 
     document.getElementById('loadingText').textContent = 'Đang submit sản phẩm...';
 
     const selectedProductIds = Array.from(selectedProducts);
-    console.log('Submitting products:', selectedProductIds);
 
-    // TODO: sau này có thể POST lên backend nếu cần
-    // await fetch(`${API_BASE_URL}/submit-products`, {...})
+    try {
+        const res = await fetch(`${API_BASE_URL}/submit-products`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                productIds: selectedProductIds,
+                productName: document.getElementById('productName').value,
+                platform: document.getElementById('platform').value,
+                criteria: {
+                    weights: {
+                        profitWeight: parseFloat(document.getElementById('profitWeight').value),
+                        reviewWeight: parseFloat(document.getElementById('reviewWeight').value),
+                        trendWeight: parseFloat(document.getElementById('trendWeight').value)
+                    },
+                    thresholds: {
+                        minReviewScore: parseFloat(document.getElementById('minReviewScore').value),
+                        minReviewCount: parseInt(document.getElementById('minReviewCount').value),
+                        minProfitMargin: parseFloat(document.getElementById('minProfitMargin').value),
+                        minFinalScore: parseFloat(document.getElementById('minFinalScore').value)
+                    }
+                },
+                storeResults: document.getElementById('storeResults').checked
+            }),
+        });
 
-    setTimeout(() => {
-        loading.classList.remove('active');
+        if (!res.ok) {
+            throw new Error(`Request failed with status ${res.status}`);
+        }
 
+        const data = await res.json();
+        console.log('Kết quả từ backend:', data);
+
+        // xử lý UX sau khi backend trả về ok
         document.getElementById('productsSection').style.display = 'none';
 
         const successSection = document.getElementById('successSection');
         successSection.style.display = 'block';
         document.getElementById('submittedCount').textContent = selectedProducts.size;
-
         successSection.scrollIntoView({ behavior: 'smooth' });
 
         showToast('Submit thành công!', 'success');
-    }, 1500);
+    } catch (err) {
+        console.error('Lỗi khi submit sản phẩm:', err);
+        showToast('Có lỗi khi submit sản phẩm.', 'error');
+    } finally {
+        loading.classList.remove('active');
+    }
 });
 
 // Toast notification
@@ -212,3 +248,31 @@ function showToast(message, type = 'success') {
 function formatPrice(price) {
     return Math.round(price).toLocaleString('vi-VN');
 }
+
+// Chọn tất cả sản phẩm
+document.getElementById('btnSelectAll').addEventListener('click', () => {
+    document.querySelectorAll('.product-card').forEach(card => {
+        const id = card.getAttribute('data-id');
+        selectedProducts.add(id);
+        card.classList.add('selected');
+    });
+    document.getElementById('selectedCount').textContent = selectedProducts.size;
+    showToast('Đã chọn tất cả sản phẩm', 'success');
+});
+
+// Reload lại
+document.getElementById('btnReload').addEventListener('click', async () => {
+    showToast('Đang tải lại danh sách...', 'info');
+    // Giả sử bạn chỉ gọi lại API products
+    try {
+        const res = await fetch(`${API_BASE_URL}/products`);
+        const data = await res.json();
+        const products = data.products || [];
+        displayProducts(products);
+        showToast('Đã tải lại danh sách sản phẩm!', 'success');
+    } catch (err) {
+        console.error('Lỗi khi tải lại sản phẩm:', err);
+        showToast('Không thể tải lại danh sách sản phẩm', 'error');
+    }
+});
+

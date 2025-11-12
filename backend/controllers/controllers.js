@@ -6,7 +6,7 @@ import {
 import { scrapeTikiWithAPI } from "../services/Tiki/tikiScrapeService.js";
 import geminiService from "../services/geminiService.js";
 import scoringService from "../services/productScoringService.js";
-import { getAICollection, admin } from "../config/firebase-db.js";
+import { getAICollection, admin, storeEvaluation, getEvaluationById } from "../config/firebase-db.js";
 import aiConfig from "../config/ai-config.js";
 
 export const getProductsData = async (req, res) => {
@@ -94,10 +94,10 @@ export const getProductsData = async (req, res) => {
             criteria
           );
 
-          // Store results in Firebase
+          // Store results in Firebase and retrieve
           let storageResult = null;
           if (storeResults) {
-            console.log('Step 3/3: Storing results in Firebase...');
+            console.log('Step 3/3: Storing and retrieving results from Firebase...');
             
             // Clean scraped products - remove undefined values
             const cleanedScrapedProducts = scrapedProducts.map(product => {
@@ -110,11 +110,10 @@ export const getProductsData = async (req, res) => {
               return cleaned;
             });
             
-            const collection = getAICollection();
             const docData = {
               evaluation: aiEvaluation.evaluation,
               scoredProducts,
-              scrapedProducts: cleanedScrapedProducts, // Use cleaned data
+              scrapedProducts: cleanedScrapedProducts,
               metadata: {
                 ...aiEvaluation.metadata,
                 platform,
@@ -129,14 +128,9 @@ export const getProductsData = async (req, res) => {
               },
             };
 
-            const docRef = await collection.add(docData);
-            storageResult = {
-              success: true,
-              evaluationId: docRef.id,
-              collection: aiConfig.firebase.aiCollection,
-            };
-
-            console.log(`Stored with ID: ${docRef.id}`);
+            storageResult = await storeEvaluation(docData);
+            console.log(`Stored with ID: ${storageResult.evaluationId}`);
+            console.log(`Auto-retrieving from Firebase for response...`);
           }
 
           aiEvaluationResult = {
@@ -166,6 +160,35 @@ export const getProductsData = async (req, res) => {
     }
 
     // Return comprehensive results
+    // If stored in Firebase, retrieve and return the evaluated products
+    if (aiEvaluationResult && aiEvaluationResult.storage && aiEvaluationResult.storage.evaluationId) {
+      try {
+        const evaluationData = await getEvaluationById(aiEvaluationResult.storage.evaluationId);
+        
+        res.status(200).json({
+          success: true,
+          message: "Scraping and AI evaluation completed successfully",
+          evaluationId: aiEvaluationResult.storage.evaluationId,
+          platform,
+          query: productName,
+          summary: {
+            totalScraped: scrapedProducts.length,
+            qualifiedProducts: evaluationData.scoredProducts?.length || 0,
+            evaluatedProducts: evaluationData.evaluation?.products?.length || 0,
+          },
+          evaluation: evaluationData.evaluation,
+          scoredProducts: evaluationData.scoredProducts,
+          metadata: evaluationData.metadata,
+          retrievedAt: evaluationData.retrievedAt,
+        });
+        return;
+      } catch (retrievalError) {
+        console.error('Failed to retrieve from Firebase:', retrievalError.message);
+        // Fall through to default response
+      }
+    }
+
+    // Fallback response if Firebase retrieval fails or storage was disabled
     res.status(200).json({
       success: true,
       message: "Scraping and AI evaluation completed successfully",
@@ -183,6 +206,60 @@ export const getProductsData = async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: error.message 
+    });
+  }
+};
+
+/**
+ * Retrieve evaluation by ID from Firebase
+ * GET /api/evaluations/:id
+ */
+export const getEvaluationByIdController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Evaluation ID is required'
+      });
+    }
+
+    console.log(`Retrieving evaluation ${id} from Firebase...`);
+    const evaluationData = await getEvaluationById(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Evaluation retrieved successfully',
+      evaluationId: id,
+      platform: evaluationData.metadata?.platform,
+      query: evaluationData.metadata?.searchQuery,
+      summary: {
+        totalScraped: evaluationData.metadata?.totalProducts || 0,
+        qualifiedProducts: evaluationData.scoredProducts?.length || 0,
+        evaluatedProducts: evaluationData.evaluation?.products?.length || 0,
+      },
+      evaluation: evaluationData.evaluation,
+      scoredProducts: evaluationData.scoredProducts,
+      metadata: evaluationData.metadata,
+      retrievedAt: evaluationData.retrievedAt,
+    });
+
+  } catch (error) {
+    console.error('Error retrieving evaluation:', error.message);
+    
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Evaluation not found',
+        details: error.message
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve evaluation',
+      details: error.message
     });
   }
 };

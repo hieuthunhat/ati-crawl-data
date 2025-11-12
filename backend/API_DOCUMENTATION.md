@@ -9,6 +9,8 @@
 
 1. [Authentication](#authentication)
 2. [Main Endpoint - Scraping with AI Evaluation](#main-endpoint)
+   - [Scrape Products with Automatic AI Evaluation](#scrape-products-with-automatic-ai-evaluation)
+   - [Retrieve Evaluation by ID](#retrieve-evaluation-by-id)
 3. [Error Handling](#error-handling)
 4. [Rate Limiting](#rate-limiting)
 5. [Response Formats](#response-formats)
@@ -70,135 +72,121 @@ Scrapes products from supported platforms (Tiki, Chotot, eBay) and **automatical
 **Processing Pipeline**:
 1. **Scraping** - Extracts products from selected platform (2-5 seconds)
 2. **Mathematical Scoring** - Calculates profit, review, trend scores (1-2 seconds)
-3. **AI Evaluation** - Gemini 2.0 Flash analyzes top 20 products (10-20 seconds)
-4. **Firebase Storage** - Saves results if `storeResults: true` (1 second)
-5. **Response** - Returns comprehensive results
+3. **AI Evaluation** - Gemini analyzes top 10 products (10-20 seconds)
+4. **Firebase Storage & Auto-Retrieval** - Saves and retrieves evaluation (1-2 seconds)
+5. **Response** - Returns evaluated products from Firebase in clean format
+
+**Key Feature**: Results are automatically stored in Firebase and retrieved for the response, ensuring consistent data format.
 
 **Response** (200 OK):
 ````json
 {
   "success": true,
   "message": "Scraping and AI evaluation completed successfully",
-  "scraping": {
-    "platform": "tiki",
-    "query": "tai nghe bluetooth",
-    "totalProducts": 50,
-    "products": [
-      {
-        "id": 123456,
-        "name": "Tai nghe Bluetooth Sony WH-1000XM5",
-        "price": 8000000,
-        "original_price": 10000000,
-        "discount_rate": 20,
-        "rating_average": 4.8,
-        "review_count": 500,
-        "quantity_sold": {
-          "value": 1200,
-          "text": "1.2k"
-        },
-        "seller": {
-          "name": "Sony Official Store",
-          "id": 98765
-        },
-        "thumbnail_url": "https://...",
-        "url": "https://tiki.vn/..."
-      }
-      // ... more products
-    ]
+  "evaluationId": "eval_1730887800_abc123",
+  "platform": "tiki",
+  "query": "tai nghe bluetooth",
+  "summary": {
+    "totalScraped": 50,
+    "qualifiedProducts": 20,
+    "evaluatedProducts": 15
   },
-  "aiEvaluation": {
-    "scoredProducts": [
+  "evaluation": {
+    "products": [
       {
         "productId": 123456,
         "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
-        "costPrice": 8000000,
-        "sellingPrice": 11200000,
-        "netProfit": 2874200,
-        "profitMargin": 25.7,
+        "rank": 1,
         "scores": {
           "profitScore": 0.85,
           "reviewScore": 0.95,
           "trendScore": 0.82,
           "finalScore": 0.88
         },
-        "meetsThresholds": true,
-        "rating": 4.8,
-        "reviewCount": 500
-      }
-      // ... more scored products
-    ],
-    "aiEvaluation": {
-      "evaluatedProducts": [
-        {
-          "productId": 123456,
-          "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
-          "rank": 1,
-          "scores": {
-            "profitScore": 0.85,
-            "reviewScore": 0.95,
-            "trendScore": 0.82,
-            "finalScore": 0.88
-          },
-          "pricing": {
-            "costPrice": 8000000,
-            "suggestedSellingPrice": 11200000,
-            "shopifyFee": 325800,
-            "netProfit": 2874200,
-            "profitMargin": 25.7
-          },
-          "analysis": {
-            "strengths": [
-              "Premium brand with strong customer loyalty",
-              "High profit margin of 25.7%",
-              "Excellent customer reviews (4.8/5 from 500 reviews)"
-            ],
-            "weaknesses": [
-              "High price point may limit market size",
-              "Strong competition in premium audio segment"
-            ],
-            "riskLevel": "low",
-            "recommendation": "Highly recommended for dropshipping. Premium positioning with solid profit margins and excellent customer satisfaction."
-          }
-        }
-      ],
-      "summary": {
-        "totalEvaluated": 20,
-        "totalRecommended": 15,
-        "averageScore": 0.82,
-        "averageProfitMargin": 23.5,
-        "priceRange": {
-          "min": 500000,
-          "max": 10000000
+        "pricing": {
+          "costPrice": 8000000,
+          "suggestedSellingPrice": 11200000,
+          "shopifyFee": 325800,
+          "netProfit": 2874200,
+          "profitMargin": 25.7
         },
-        "topCategory": "Electronics - Audio",
-        "marketInsights": [
-          "Strong demand for wireless headphones in Vietnam",
-          "Premium brands command better margins despite competition",
-          "Customer reviews heavily influence purchase decisions"
-        ]
+        "analysis": {
+          "strengths": [
+            "Premium brand with strong customer loyalty",
+            "High profit margin of 25.7%",
+            "Excellent customer reviews (4.8/5 from 500 reviews)"
+          ],
+          "weaknesses": [
+            "High price point may limit market size",
+            "Strong competition in premium audio segment"
+          ],
+          "riskLevel": "low",
+          "recommendation": "Highly recommended for dropshipping."
+        }
       }
-    },
-    "metadata": {
-      "timestamp": "2025-11-06T10:30:00.000Z",
-      "platform": "tiki",
-      "searchQuery": "tai nghe bluetooth",
-      "totalProducts": 50,
-      "qualifiedProducts": 20,
-      "productsEvaluated": 20,
-      "criteria": {
-        "weights": { "profitWeight": 0.4, "reviewWeight": 0.4, "trendWeight": 0.2 },
-        "thresholds": { "minReviewScore": 4.0, "minReviewCount": 10, "minProfitMargin": 0.2, "minFinalScore": 0.5 }
+      // ... more evaluated products
+    ],
+    "summary": {
+      "totalEvaluated": 15,
+      "totalRecommended": 12,
+      "averageScore": 0.82,
+      "averageProfitMargin": 23.5,
+      "priceRange": {
+        "min": 500000,
+        "max": 10000000
       },
-      "model": "gemini-2.0-flash-exp"
-    },
-    "storage": {
-      "success": true,
-      "evaluationId": "eval_1730887800_abc123",
-      "collection": "ai-evaluations"
+      "topCategory": "Electronics - Audio",
+      "marketInsights": [
+        "Strong demand for wireless headphones in Vietnam",
+        "Premium brands command better margins despite competition"
+      ]
     }
-  }
+  },
+  "scoredProducts": [
+    {
+      "productId": 123456,
+      "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
+      "costPrice": 8000000,
+      "sellingPrice": 11200000,
+      "netProfit": 2874200,
+      "profitMargin": 25.7,
+      "scores": {
+        "profitScore": 0.85,
+        "reviewScore": 0.95,
+        "trendScore": 0.82,
+        "finalScore": 0.88
+      },
+      "meetsThresholds": true,
+      "rating": 4.8,
+      "reviewCount": 500
+    }
+    // ... more scored products
+  ],
+  "metadata": {
+    "timestamp": "2025-11-06T10:30:00.000Z",
+    "platform": "tiki",
+    "searchQuery": "tai nghe bluetooth",
+    "totalProducts": 50,
+    "qualifiedProducts": 20,
+    "userId": "user123",
+    "sessionId": "session456",
+    "criteria": {
+      "weights": { "profitWeight": 0.4, "reviewWeight": 0.4, "trendWeight": 0.2 },
+      "thresholds": { "minReviewScore": 4.0, "minReviewCount": 10, "minProfitMargin": 0.2, "minFinalScore": 0.5 }
+    },
+    "model": "gemini-1.5-flash-latest",
+    "source": "auto-evaluation"
+  },
+  "retrievedAt": "2025-11-06T10:30:05.000Z"
 }
 ````
+
+**Key Changes from Previous Version**:
+- ✅ **Evaluated products returned**: Instead of raw scraped products, the response now contains AI-evaluated products from Firebase
+- ✅ **Firebase ID included**: `evaluationId` can be used to retrieve results later
+- ✅ **Summary statistics**: Quick overview of scraping and evaluation results
+- ✅ **No raw scraped data**: Scraped products are stored in Firebase but not returned (reduces response size)
+- ✅ **Retrieved timestamp**: Shows when data was fetched from Firebase
 
 **Error Responses**:
 - `400 Bad Request` - Invalid platform, missing productName, or invalid criteria
@@ -210,7 +198,83 @@ Scrapes products from supported platforms (Tiki, Chotot, eBay) and **automatical
 - **Partial criteria merge** - Provide only weights or thresholds you want to override
 - **Response time**: Typically 15-30 seconds (scraping + AI evaluation)
 - **Graceful degradation**: If AI fails, you still get scraped products
-- **Top 20 rule**: Only top 20 scored products sent to AI (performance optimization)
+- **Top 10 rule**: Only top 10 scored products sent to AI (performance optimization)
+
+---
+
+### **Retrieve Evaluation by ID**
+
+Get previously stored evaluation results from Firebase using the evaluation ID.
+
+**Endpoint**: `GET /api/evaluations/:id`
+
+**URL Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Firebase evaluation document ID (from previous response) |
+
+**Example Request**:
+````bash
+GET /api/evaluations/eval_1730887800_abc123
+````
+
+**Response** (200 OK):
+````json
+{
+  "success": true,
+  "message": "Evaluation retrieved successfully",
+  "evaluationId": "eval_1730887800_abc123",
+  "platform": "tiki",
+  "query": "tai nghe bluetooth",
+  "summary": {
+    "totalScraped": 50,
+    "qualifiedProducts": 20,
+    "evaluatedProducts": 15
+  },
+  "evaluation": {
+    "products": [ /* AI-evaluated products */ ],
+    "summary": { /* Evaluation summary */ }
+  },
+  "scoredProducts": [ /* Mathematically scored products */ ],
+  "metadata": {
+    "timestamp": "2025-11-06T10:30:00.000Z",
+    "platform": "tiki",
+    "searchQuery": "tai nghe bluetooth",
+    "totalProducts": 50,
+    "qualifiedProducts": 20,
+    "userId": "user123",
+    "sessionId": "session456",
+    "storedAt": "2025-11-06T10:30:02.000Z",
+    "source": "auto-evaluation"
+  },
+  "retrievedAt": "2025-11-06T11:45:30.000Z"
+}
+````
+
+**Error Responses**:
+
+**404 Not Found** - Evaluation ID doesn't exist:
+````json
+{
+  "success": false,
+  "error": "Evaluation not found",
+  "details": "Evaluation with ID eval_invalid123 not found"
+}
+````
+
+**400 Bad Request** - Missing evaluation ID:
+````json
+{
+  "success": false,
+  "error": "Evaluation ID is required"
+}
+````
+
+**Use Cases**:
+- 📥 **Retrieve historical evaluations** without re-scraping
+- 📊 **Compare evaluations** from different time periods
+- 🔄 **Share evaluation results** using the ID
+- 💾 **Reduce API calls** by caching evaluation IDs
 
 ---
 

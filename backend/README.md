@@ -204,13 +204,51 @@ POST /api/crawledProducts
 ````
 
 **How It Works:**
-1. **Scraping** - Extracts products from selected platform
-2. **Mathematical Scoring** - Calculates profit, review, and trend scores
-3. **AI Evaluation** - Gemini 2.0 Flash analyzes top 20 products
-4. **Firebase Storage** - Saves results for later retrieval (optional)
-5. **Response** - Returns scraping data + AI evaluation in one response
+1. **Scraping** - Extracts products from selected platform (2-5 seconds)
+2. **Mathematical Scoring** - Calculates profit, review, and trend scores (1-2 seconds)
+3. **AI Evaluation** - Gemini analyzes top 10 products (10-20 seconds)
+4. **Firebase Storage & Retrieval** - Saves evaluation and automatically retrieves it for response (1-2 seconds)
+5. **Response** - Returns evaluated products from Firebase (clean, consistent format)
 
 **Note:** All AI parameters are optional. If not provided, default values from `ai-config.js` are used.
+
+---
+
+## API Endpoints
+
+### **1. Scrape & Evaluate Products**
+
+````http
+POST /api/crawledProducts
+````
+
+Scrapes products and automatically evaluates them with AI. Returns evaluated products from Firebase.
+
+**Response includes:**
+- ✅ **Evaluation ID** - For retrieving results later
+- ✅ **AI-evaluated products** - With pricing, analysis, recommendations
+- ✅ **Scored products** - Mathematical scoring results
+- ✅ **Summary statistics** - Totals and averages
+- ✅ **Metadata** - Platform, query, criteria used
+
+### **2. Retrieve Evaluation by ID**
+
+````http
+GET /api/evaluations/:id
+````
+
+Retrieves previously stored evaluation results from Firebase.
+
+**Example:**
+````bash
+GET /api/evaluations/eval_abc123xyz
+````
+
+**Use cases:**
+- Retrieve historical evaluations without re-scraping
+- Compare evaluations from different time periods
+- Share evaluation results using the ID
+- Reduce API calls by caching evaluation IDs
 
 ---
 
@@ -222,83 +260,92 @@ POST /api/crawledProducts
 {
   "success": true,
   "message": "Scraping and AI evaluation completed successfully",
-  "scraping": {
-    "platform": "tiki",
-    "query": "tai nghe bluetooth",
-    "totalProducts": 50,
-    "products": [
-      {
-        "id": 123,
-        "name": "Tai nghe Bluetooth Sony WH-1000XM5",
-        "price": 500000,
-        "original_price": 800000,
-        "discount_rate": 37.5,
-        "rating_average": 4.5,
-        "review_count": 250
-      }
-      // ... more products
-    ]
+  "evaluationId": "eval_abc123xyz",
+  "platform": "tiki",
+  "query": "tai nghe bluetooth",
+  "summary": {
+    "totalScraped": 50,
+    "qualifiedProducts": 20,
+    "evaluatedProducts": 10
   },
-  "aiEvaluation": {
-    "scoredProducts": [
+  "evaluation": {
+    "products": [
       {
         "productId": 123,
         "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
-        "costPrice": 500000,
-        "sellingPrice": 700000,
-        "netProfit": 178000,
-        "profitMargin": 25.4,
+        "rank": 1,
         "scores": {
           "profitScore": 0.85,
           "reviewScore": 0.92,
           "trendScore": 0.78,
           "finalScore": 0.86
         },
-        "meetsThresholds": true
-      }
-    ],
-    "aiEvaluation": {
-      "evaluatedProducts": [
-        {
-          "productId": 123,
-          "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
-          "rank": 1,
-          "pricing": {
-            "costPrice": 500000,
-            "suggestedSellingPrice": 700000,
-            "shopifyFee": 20600,
-            "netProfit": 178000,
-            "profitMargin": 25.4
-          },
-          "analysis": {
-            "strengths": ["High profit margin", "Excellent reviews"],
-            "weaknesses": ["High competition"],
-            "riskLevel": "low",
-            "recommendation": "Highly recommended for dropshipping"
-          }
+        "pricing": {
+          "costPrice": 500000,
+          "suggestedSellingPrice": 700000,
+          "shopifyFee": 20600,
+          "netProfit": 178000,
+          "profitMargin": 25.4
+        },
+        "analysis": {
+          "strengths": ["High profit margin", "Excellent reviews"],
+          "weaknesses": ["High competition"],
+          "riskLevel": "low",
+          "recommendation": "Highly recommended for dropshipping"
         }
-      ],
-      "summary": {
-        "totalEvaluated": 1,
-        "totalRecommended": 1,
-        "averageScore": 0.86,
-        "averageProfitMargin": 25.4,
-        "marketInsights": ["Strong demand for wireless audio products"]
       }
-    },
-    "metadata": {
-      "timestamp": "2025-11-06T10:30:00.000Z",
-      "productsEvaluated": 1,
-      "model": "gemini-2.0-flash-exp"
-    },
-    "storage": {
-      "success": true,
-      "evaluationId": "eval_abc123xyz",
-      "collection": "ai-evaluations"
+      // ... more evaluated products
+    ],
+    "summary": {
+      "totalEvaluated": 10,
+      "totalRecommended": 8,
+      "averageScore": 0.82,
+      "averageProfitMargin": 24.3,
+      "marketInsights": ["Strong demand for wireless audio products"]
     }
-  }
+  },
+  "scoredProducts": [
+    {
+      "productId": 123,
+      "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
+      "costPrice": 500000,
+      "sellingPrice": 700000,
+      "netProfit": 178000,
+      "profitMargin": 25.4,
+      "scores": {
+        "profitScore": 0.85,
+        "reviewScore": 0.92,
+        "trendScore": 0.78,
+        "finalScore": 0.86
+      },
+      "meetsThresholds": true,
+      "rating": 4.5,
+      "reviewCount": 250
+    }
+    // ... more scored products
+  ],
+  "metadata": {
+    "timestamp": "2025-11-13T10:30:00.000Z",
+    "platform": "tiki",
+    "searchQuery": "tai nghe bluetooth",
+    "totalProducts": 50,
+    "qualifiedProducts": 20,
+    "userId": "user123",
+    "sessionId": "session456",
+    "model": "gemini-1.5-flash-latest",
+    "source": "auto-evaluation",
+    "storedAt": "2025-11-13T10:30:02.000Z"
+  },
+  "retrievedAt": "2025-11-13T10:30:05.000Z"
 }
 ````
+
+**Key Points:**
+- ✅ Raw scraped products are **not returned** (stored in Firebase only)
+- ✅ Response contains **AI-evaluated products** with detailed analysis
+- ✅ **Evaluation ID** can be used to retrieve results later
+- ✅ **Summary statistics** provide quick overview
+- ✅ Response is retrieved from Firebase after storage
 
 ---
 

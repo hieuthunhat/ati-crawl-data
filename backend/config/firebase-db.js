@@ -32,6 +32,55 @@ export const getCollection = (collectionName) => {
   return db.collection(collectionName);
 };
 
+/**
+ * Retrieve evaluation data by ID
+ * @param {string} evaluationId - The document ID in Firebase
+ * @returns {Promise<Object>} The evaluation data including evaluated products
+ */
+export const getEvaluationById = async (evaluationId) => {
+  try {
+    const collection = getAICollection();
+    const docRef = collection.doc(evaluationId);
+    const doc = await docRef.get();
+    
+    if (!doc.exists) {
+      throw new Error(`Evaluation with ID ${evaluationId} not found`);
+    }
+    
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      retrievedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Error retrieving evaluation:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Store evaluation results in Firebase
+ * @param {Object} evaluationData - The data to store
+ * @returns {Promise<Object>} Storage result with document ID
+ */
+export const storeEvaluation = async (evaluationData) => {
+  try {
+    const collection = getAICollection();
+    const docRef = await collection.add(evaluationData);
+    
+    return {
+      success: true,
+      evaluationId: docRef.id,
+      collection: process.env.FIREBASE_AI_COLLECTION || 'ai-evaluations',
+      storedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Error storing evaluation:', error.message);
+    throw error;
+  }
+};
+
 // Export existing db and admin
 export { db, admin };
 

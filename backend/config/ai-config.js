@@ -53,11 +53,11 @@ const aiConfig = {
 
 // Validation
 if (!aiConfig.gemini.apiKey) {
-  console.warn('⚠️  GEMINI_API_KEY not configured - AI features will be disabled');
+  console.warn('GEMINI_API_KEY not configured - AI features will be disabled');
 }
 
 if (!aiConfig.firebase.serviceAccountPath) {
-  console.warn('⚠️  FIREBASE_SERVICE_ACCOUNT_PATH not configured - Storage features will be disabled');
+  console.warn('FIREBASE_SERVICE_ACCOUNT_PATH not configured - Storage features will be disabled');
 }
 
 export default aiConfig;

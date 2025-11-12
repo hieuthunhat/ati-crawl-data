@@ -24,7 +24,7 @@ export const initializeGemini = () => {
           responseMimeType: "application/json", // Force JSON output
         },
       });
-      console.log('✅ Gemini AI initialized with JSON mode');
+      console.log('Gemini AI initialized with JSON mode');
     } catch (error) {
       console.error('Gemini initialization failed:', error.message);
       return null;
@@ -239,14 +239,14 @@ export const evaluateProducts = async (products, criteria = {}) => {
       
       try {
         evaluation = JSON.parse(fixedJson);
-        console.log('✅ Successfully parsed after fixing JSON');
+        console.log('Successfully parsed after fixing JSON');
       } catch (secondError) {
-        console.error('❌ Could not parse JSON even after fixes');
+        console.error('Could not parse JSON even after fixes');
         console.error('Second error:', secondError.message);
         
         // Strategy 4: Try to salvage partial data more aggressively
         try {
-          console.log('⚠️ Attempting aggressive salvage...');
+          console.log('Attempting aggressive salvage...');
           
           // Find the last complete product object
           let truncatedJson = fixedJson;
@@ -269,10 +269,10 @@ export const evaluateProducts = async (products, criteria = {}) => {
           // Try parsing the truncated version
           try {
             evaluation = JSON.parse(truncatedJson);
-            console.log('✅ Salvaged by removing incomplete data');
+            console.log('Salvaged by removing incomplete data');
           } catch (truncError) {
             // Manual reconstruction
-            console.log('⚠️ Manual reconstruction attempt...');
+            console.log('Manual reconstruction attempt...');
             
             // Extract just completed product objects
             const productMatches = truncatedJson.match(/\{[^{}]*"productId"[^{}]*"analysis"[^{}]*\}/g);
@@ -287,14 +287,14 @@ export const evaluateProducts = async (products, criteria = {}) => {
                   marketInsights: ['Partial evaluation - some products were truncated']
                 }
               };
-              console.log(`✅ Salvaged ${productMatches.length} complete product(s)`);
+              console.log(`Salvaged ${productMatches.length} complete product(s)`);
             } else {
               throw new Error('No complete products found');
             }
           }
         } catch (thirdError) {
           // Final fallback
-          console.error('❌ All salvage attempts failed');
+          console.error('All salvage attempts failed');
           console.error('Creating empty fallback response.');
           evaluation = {
             evaluatedProducts: [],

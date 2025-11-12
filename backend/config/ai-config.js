@@ -24,14 +24,14 @@ const aiConfig = {
 
   // Scoring weights
   defaultWeights: {
-    profitWeight: 0.40,
+    profitWeight: 0.60,
     reviewWeight: 0.40,
-    trendWeight: 0.20,
+    trendWeight: 0.00,
   },
 
   // Quality thresholds
   defaultThresholds: {
-    minReviewScore: 4.0,
+    minReviewScore: 2.0,
     minReviewCount: 10,
     minProfitMargin: 0.20,
     minFinalScore: 0.50,

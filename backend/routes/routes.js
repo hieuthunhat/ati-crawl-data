@@ -1,12 +1,11 @@
 import express from "express";
 import { getProductsData } from "../controllers/controllers.js";
+import { batchCreateProducts } from "../controllers/shopifyController.js";
 
 const router = express.Router();
 
-router.get("/", (req, res) => {
-  res.send("Chào mừng đến với API Scrape Chotot!");
-});
-
 router.post("/crawledProducts", getProductsData);
+
+router.post("/products", batchCreateProducts);
 
 export default router;

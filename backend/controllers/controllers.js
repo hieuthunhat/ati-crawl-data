@@ -47,7 +47,7 @@ const transformToSimplifiedFormat = (evaluationData) => {
       return {
         id: String(scoredProduct.productId || `sp${index + 1}`),
         name: scoredProduct.productName || 'Unknown Product',
-        price: Number(price),
+        price: Math.round(Number(price)),
         avgRating: Number(scoredProduct.rating || 0),
         ratingNum: Number(scoredProduct.reviewCount || 0),
         imageUrl,

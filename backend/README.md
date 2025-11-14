@@ -138,7 +138,7 @@ REVIEW_WEIGHT=0.40
 TREND_WEIGHT=0.20
 
 # Quality Thresholds
-MIN_REVIEW_SCORE=4.0
+MIN_REVIEW_SCORE=2.0
 MIN_REVIEW_COUNT=10
 MIN_PROFIT_MARGIN=0.20
 MIN_FINAL_SCORE=0.50
@@ -263,89 +263,65 @@ GET /api/evaluations/eval_abc123xyz
   "evaluationId": "eval_abc123xyz",
   "platform": "tiki",
   "query": "tai nghe bluetooth",
-  "summary": {
-    "totalScraped": 50,
-    "qualifiedProducts": 20,
-    "evaluatedProducts": 10
-  },
-  "evaluation": {
-    "products": [
-      {
-        "productId": 123,
-        "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
-        "rank": 1,
-        "scores": {
-          "profitScore": 0.85,
-          "reviewScore": 0.92,
-          "trendScore": 0.78,
-          "finalScore": 0.86
-        },
-        "pricing": {
-          "costPrice": 500000,
-          "suggestedSellingPrice": 700000,
-          "shopifyFee": 20600,
-          "netProfit": 178000,
-          "profitMargin": 25.4
-        },
-        "analysis": {
-          "strengths": ["High profit margin", "Excellent reviews"],
-          "weaknesses": ["High competition"],
-          "riskLevel": "low",
-          "recommendation": "Highly recommended for dropshipping"
-        }
-      }
-      // ... more evaluated products
-    ],
-    "summary": {
-      "totalEvaluated": 10,
-      "totalRecommended": 8,
-      "averageScore": 0.82,
-      "averageProfitMargin": 24.3,
-      "marketInsights": ["Strong demand for wireless audio products"]
-    }
-  },
-  "scoredProducts": [
+  "totalProducts": 50,
+  "products": [
     {
-      "productId": 123,
-      "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
-      "costPrice": 500000,
-      "sellingPrice": 700000,
-      "netProfit": 178000,
-      "profitMargin": 25.4,
-      "scores": {
-        "profitScore": 0.85,
-        "reviewScore": 0.92,
-        "trendScore": 0.78,
-        "finalScore": 0.86
-      },
-      "meetsThresholds": true,
-      "rating": 4.5,
-      "reviewCount": 250
+      "id": "123456",
+      "name": "Tai nghe Bluetooth Sony WH-1000XM5",
+      "price": 8000000,
+      "avgRating": 4.8,
+      "ratingNum": 500,
+      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/abc123.jpg"
+    },
+    {
+      "id": "123457",
+      "name": "Tai nghe Bluetooth JBL Tune 510BT",
+      "price": 890000,
+      "avgRating": 4.5,
+      "ratingNum": 1250,
+      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/def456.jpg"
+    },
+    {
+      "id": "123458",
+      "name": "Tai nghe Bluetooth Apple AirPods Pro",
+      "price": 5990000,
+      "avgRating": 4.9,
+      "ratingNum": 3200,
+      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/ghi789.jpg"
     }
-    // ... more scored products
-  ],
-  "metadata": {
-    "timestamp": "2025-11-13T10:30:00.000Z",
-    "platform": "tiki",
-    "searchQuery": "tai nghe bluetooth",
-    "totalProducts": 50,
-    "qualifiedProducts": 20,
-    "userId": "user123",
-    "sessionId": "session456",
-    "model": "gemini-1.5-flash-latest",
-    "source": "auto-evaluation",
-    "storedAt": "2025-11-13T10:30:02.000Z"
-  },
-  "retrievedAt": "2025-11-13T10:30:05.000Z"
+    // ... 47 more products
+  ]
 }
 ````
 
+**Response Structure**:
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Operation success status |
+| `message` | string | Human-readable message |
+| `evaluationId` | string | Firebase document ID for retrieval |
+| `platform` | string | Source platform (tiki/ebay/chotot) |
+| `query` | string | Search query used |
+| `totalProducts` | number | Number of products returned |
+| `products` | array | Simplified product array |
+
+**Product Fields**:
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique product identifier |
+| `name` | string | Product name/title |
+| `price` | number | **Suggested selling price** (AI-calculated with optimal markup) in VND |
+| `avgRating` | number | Average rating (0-5) |
+| `ratingNum` | number | Number of ratings/reviews |
+| `imageUrl` | string | Product image URL |
+
 **Key Points:**
-- ✅ Raw scraped products are **not returned** (stored in Firebase only)
-- ✅ Response contains **AI-evaluated products** with detailed analysis
-- ✅ **Evaluation ID** can be used to retrieve results later
-- ✅ **Summary statistics** provide quick overview
-- ✅ Response is retrieved from Firebase after storage
+- ✅ **Simplified format**: Clean product array ready for frontend display
+- ✅ **Consistent field names**: `avgRating`, `ratingNum` across all platforms
+- ✅ **Smart pricing**: Returns AI-optimized selling prices (includes markup + Shopify fees)
+- ✅ **Evaluation ID** included for retrieving results later
+- ✅ **Reduced payload**: Only essential product data returned
+- ✅ **AI evaluation data**: Stored in Firebase but not in response (keeps it clean)
 
 ---
 

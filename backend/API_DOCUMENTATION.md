@@ -86,98 +86,34 @@ Scrapes products from supported platforms (Tiki, Chotot, eBay) and **automatical
   "evaluationId": "eval_1730887800_abc123",
   "platform": "tiki",
   "query": "tai nghe bluetooth",
-  "summary": {
-    "totalScraped": 50,
-    "qualifiedProducts": 20,
-    "evaluatedProducts": 15
-  },
-  "evaluation": {
-    "products": [
-      {
-        "productId": 123456,
-        "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
-        "rank": 1,
-        "scores": {
-          "profitScore": 0.85,
-          "reviewScore": 0.95,
-          "trendScore": 0.82,
-          "finalScore": 0.88
-        },
-        "pricing": {
-          "costPrice": 8000000,
-          "suggestedSellingPrice": 11200000,
-          "shopifyFee": 325800,
-          "netProfit": 2874200,
-          "profitMargin": 25.7
-        },
-        "analysis": {
-          "strengths": [
-            "Premium brand with strong customer loyalty",
-            "High profit margin of 25.7%",
-            "Excellent customer reviews (4.8/5 from 500 reviews)"
-          ],
-          "weaknesses": [
-            "High price point may limit market size",
-            "Strong competition in premium audio segment"
-          ],
-          "riskLevel": "low",
-          "recommendation": "Highly recommended for dropshipping."
-        }
-      }
-      // ... more evaluated products
-    ],
-    "summary": {
-      "totalEvaluated": 15,
-      "totalRecommended": 12,
-      "averageScore": 0.82,
-      "averageProfitMargin": 23.5,
-      "priceRange": {
-        "min": 500000,
-        "max": 10000000
-      },
-      "topCategory": "Electronics - Audio",
-      "marketInsights": [
-        "Strong demand for wireless headphones in Vietnam",
-        "Premium brands command better margins despite competition"
-      ]
-    }
-  },
-  "scoredProducts": [
+  "totalProducts": 50,
+  "products": [
     {
-      "productId": 123456,
-      "productName": "Tai nghe Bluetooth Sony WH-1000XM5",
-      "costPrice": 8000000,
-      "sellingPrice": 11200000,
-      "netProfit": 2874200,
-      "profitMargin": 25.7,
-      "scores": {
-        "profitScore": 0.85,
-        "reviewScore": 0.95,
-        "trendScore": 0.82,
-        "finalScore": 0.88
-      },
-      "meetsThresholds": true,
-      "rating": 4.8,
-      "reviewCount": 500
-    }
-    // ... more scored products
-  ],
-  "metadata": {
-    "timestamp": "2025-11-06T10:30:00.000Z",
-    "platform": "tiki",
-    "searchQuery": "tai nghe bluetooth",
-    "totalProducts": 50,
-    "qualifiedProducts": 20,
-    "userId": "user123",
-    "sessionId": "session456",
-    "criteria": {
-      "weights": { "profitWeight": 0.4, "reviewWeight": 0.4, "trendWeight": 0.2 },
-      "thresholds": { "minReviewScore": 4.0, "minReviewCount": 10, "minProfitMargin": 0.2, "minFinalScore": 0.5 }
+      "id": "123456",
+      "name": "Tai nghe Bluetooth Sony WH-1000XM5",
+      "price": 8000000,
+      "avgRating": 4.8,
+      "ratingNum": 500,
+      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/abc123.jpg"
     },
-    "model": "gemini-1.5-flash-latest",
-    "source": "auto-evaluation"
-  },
-  "retrievedAt": "2025-11-06T10:30:05.000Z"
+    {
+      "id": "123457",
+      "name": "Tai nghe Bluetooth JBL Tune 510BT",
+      "price": 890000,
+      "avgRating": 4.5,
+      "ratingNum": 1250,
+      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/def456.jpg"
+    },
+    {
+      "id": "123458",
+      "name": "Tai nghe Bluetooth Apple AirPods Pro",
+      "price": 5990000,
+      "avgRating": 4.9,
+      "ratingNum": 3200,
+      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/ghi789.jpg"
+    }
+    // ... more products
+  ]
 }
 ````
 
@@ -226,30 +162,46 @@ GET /api/evaluations/eval_1730887800_abc123
   "evaluationId": "eval_1730887800_abc123",
   "platform": "tiki",
   "query": "tai nghe bluetooth",
-  "summary": {
-    "totalScraped": 50,
-    "qualifiedProducts": 20,
-    "evaluatedProducts": 15
-  },
-  "evaluation": {
-    "products": [ /* AI-evaluated products */ ],
-    "summary": { /* Evaluation summary */ }
-  },
-  "scoredProducts": [ /* Mathematically scored products */ ],
-  "metadata": {
-    "timestamp": "2025-11-06T10:30:00.000Z",
-    "platform": "tiki",
-    "searchQuery": "tai nghe bluetooth",
-    "totalProducts": 50,
-    "qualifiedProducts": 20,
-    "userId": "user123",
-    "sessionId": "session456",
-    "storedAt": "2025-11-06T10:30:02.000Z",
-    "source": "auto-evaluation"
-  },
-  "retrievedAt": "2025-11-06T11:45:30.000Z"
+  "totalProducts": 50,
+  "products": [
+    {
+      "id": "123456",
+      "name": "Tai nghe Bluetooth Sony WH-1000XM5",
+      "price": 8000000,
+      "avgRating": 4.8,
+      "ratingNum": 500,
+      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/abc123.jpg"
+    },
+    {
+      "id": "123457",
+      "name": "Tai nghe Bluetooth JBL Tune 510BT",
+      "price": 890000,
+      "avgRating": 4.5,
+      "ratingNum": 1250,
+      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/def456.jpg"
+    }
+    // ... more products
+  ]
 }
 ````
+
+**Product Object Structure**:
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique product identifier |
+| `name` | string | Product name/title |
+| `price` | number | **Suggested selling price** (AI-calculated with markup + fees) in VND |
+| `avgRating` | number | Average rating (0-5) |
+| `ratingNum` | number | Number of ratings/reviews |
+| `imageUrl` | string | Product image URL |
+
+**Key Changes from Previous Version**:
+- ✅ **Simplified response**: Clean, flat product array instead of nested complex structure
+- ✅ **Frontend-ready format**: Direct mapping to UI components
+- ✅ **Consistent field names**: `avgRating` and `ratingNum` across all platforms
+- ✅ **Smart pricing**: Returns AI-calculated suggested selling price (not cost price)
+- ✅ **Reduced payload size**: Only essential product information returned
+- ✅ **AI evaluation data**: Stored in Firebase but not returned (keeps response clean)
 
 **Error Responses**:
 

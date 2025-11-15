@@ -1,13 +1,8 @@
 import { scrapeEbayWithPuppeteer } from "../services/eBay/ebayScrapeService.js";
-import {
-  getCategoryByText,
-  scrapeChototWithPuppeteer,
-} from "../services/Chotot/chototScrapeService.js";
 import { scrapeTikiWithAPI } from "../services/Tiki/tikiScrapeService.js";
 import geminiService from "../services/geminiService.js";
 import scoringService from "../services/productScoringService.js";
-import { getAICollection, admin, storeEvaluation, getEvaluationById } from "../config/firebase-db.js";
-import aiConfig from "../config/ai-config.js";
+import { admin, storeEvaluation, getEvaluationById } from "../config/firebase-db.js";
 import { transformToSimplifiedFormat } from "../presenters/productPresenter.js";
 
 export const getProductsData = async (req, res) => {
@@ -50,23 +45,17 @@ export const getProductsData = async (req, res) => {
         console.log(`${scoredProducts.length} products passed quality thresholds`);
 
         if (scoredProducts.length > 0) {
-          // AI evaluation (top 10 products to avoid response truncation)
           console.log('Step 2/3: AI evaluation with Gemini 2.0 Flash...');
           const topProducts = scoredProducts.slice(0, 10);
-          
-          // Map scored products back to original products
+
           const productsForAI = topProducts.map(sp => {
-            // Try to find by ID first (Tiki products)
             let original = scrapedProducts.find(p => p.id === sp.productId);
-            
-            // If not found by ID, try matching by name/title (eBay/Chotot products)
+
             if (!original) {
               original = scrapedProducts.find(p => 
                 (p.name || p.title) === sp.productName
               );
             }
-            
-            // If still not found, try matching by link (extract ID from link)
             if (!original && sp.productId) {
               original = scrapedProducts.find(p => 
                 p.link && p.link.includes(sp.productId)
@@ -74,7 +63,7 @@ export const getProductsData = async (req, res) => {
             }
             
             return original;
-          }).filter(p => p !== undefined); // Remove any unmatched products
+          }).filter(p => p !== undefined);
           
           if (productsForAI.length === 0) {
             throw new Error('Failed to map scored products to original products');
@@ -85,12 +74,10 @@ export const getProductsData = async (req, res) => {
             criteria
           );
 
-          // Store results in Firebase and retrieve
           let storageResult = null;
           if (storeResults) {
             console.log('Step 3/3: Storing and retrieving results from Firebase...');
             
-            // Clean scraped products - remove undefined values
             const cleanedScrapedProducts = scrapedProducts.map(product => {
               const cleaned = {};
               Object.keys(product).forEach(key => {
@@ -150,13 +137,10 @@ export const getProductsData = async (req, res) => {
       }
     }
 
-    // Return comprehensive results
-    // If stored in Firebase, retrieve and return the evaluated products
     if (aiEvaluationResult && aiEvaluationResult.storage && aiEvaluationResult.storage.evaluationId) {
       try {
         const evaluationData = await getEvaluationById(aiEvaluationResult.storage.evaluationId);
-        
-        // Transform to simplified format
+
         const products = transformToSimplifiedFormat(evaluationData);
         
         res.status(200).json({
@@ -171,7 +155,6 @@ export const getProductsData = async (req, res) => {
         return;
       } catch (retrievalError) {
         console.error('Failed to retrieve from Firebase:', retrievalError.message);
-        // Fall through to default response
       }
     }
 
@@ -214,7 +197,6 @@ export const getEvaluationByIdController = async (req, res) => {
     console.log(`Retrieving evaluation ${id} from Firebase...`);
     const evaluationData = await getEvaluationById(id);
 
-    // Transform to simplified format
     const products = transformToSimplifiedFormat(evaluationData);
 
     res.status(200).json({

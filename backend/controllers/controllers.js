@@ -96,8 +96,6 @@ export const getProductsData = async (req, res) => {
                 ...aiEvaluation.metadata,
                 platform,
                 searchQuery: productName,
-                userId: userId || 'anonymous',
-                sessionId: sessionId || `session-${Date.now()}`,
                 totalProducts: scrapedProducts.length,
                 qualifiedProducts: scoredProducts.length,
                 criteria,

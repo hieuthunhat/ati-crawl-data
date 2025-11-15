@@ -93,7 +93,7 @@ async function scrapeEbayWithPuppeteer({keyword, pages = 3, options = {}}) {
           cards.forEach(card => {
             const titleEl = card.querySelector('.s-card__title .su-styled-text');
             const priceEl = card.querySelector('.s-card__price');
-            const linkEl = card.querySelector('.su-card-container__header a.su-link');
+            const linkEl = card.querySelector('a[href*="/itm/"]');
             const imageEl = card.querySelector('.s-card__image');
             const ratingEl = card.querySelector('.x-star-rating');
             let rating = null;
@@ -104,12 +104,14 @@ async function scrapeEbayWithPuppeteer({keyword, pages = 3, options = {}}) {
               const halfStars = ratingEl.querySelectorAll('svg use[href*="star-half"]').length;
               rating = filledStars + (halfStars * 0.5);
 
-              const reviewEl = card.querySelector('.s-item__reviews-count');
+              const reviewEl = card.querySelector('.s-card__product-reviews');
               if (reviewEl) {
                 const reviewText = reviewEl.textContent.trim();
-                const match = reviewText.match(/(\d+[\d,]*)/);
+                // Extract number before "product ratings" text
+                // Format: "5.0 out of 5 stars.3 product ratings - ..."
+                const match = reviewText.match(/(\d+[\d,]*)\s+product\s+ratings?/i);
                 if (match) {
-                  reviewCount = match[1].replace(/,/g, '');
+                  reviewCount = parseInt(match[1].replace(/,/g, ''));
                 }
               }
             }
@@ -151,9 +153,65 @@ async function scrapeEbayWithPuppeteer({keyword, pages = 3, options = {}}) {
     }
   }
 
-  fs.writeFileSync("ebay_products.json", JSON.stringify(results, null, 2));
+  // Normalize product data before returning
+  const normalizedProducts = normalizeEbayProducts(results);
+  
+  // fs.writeFileSync("ebay_products.json", JSON.stringify(normalizedProducts, null, 2));
 
-  return results;
+  return normalizedProducts;
+}
+
+/**
+ * Normalize eBay product data to match expected format
+ * - Parse price strings to numbers
+ * - Filter out junk/banner products
+ * - Handle null values
+ */
+function normalizeEbayProducts(products) {
+  const junkTitlePatterns = [
+    /^shop on ebay$/i,
+    /^ebay$/i,
+    /^banner$/i,
+    /^advertisement$/i,
+    /^sponsored$/i
+  ];
+
+  return products
+    .map(product => {
+      // Parse price string to number
+      let priceNum = 0;
+      if (product.price) {
+        // Remove currency symbols, commas, spaces
+        const priceStr = product.price.replace(/[$£€,\s]/g, '');
+        priceNum = parseFloat(priceStr);
+      }
+
+      return {
+        title: product.title,
+        name: product.title, // Add name alias for compatibility
+        price: priceNum || 0,
+        link: product.link,
+        image: product.image,
+        rating: product.rating || 0,
+        reviewCount: product.reviewCount || 0
+      };
+    })
+    .filter(product => {
+      // Filter out junk products
+      if (!product.title || product.title.length < 3) return false;
+      
+      // Check against junk patterns
+      const isJunk = junkTitlePatterns.some(pattern => pattern.test(product.title));
+      if (isJunk) return false;
+
+      // Require valid price
+      if (!product.price || product.price <= 0) return false;
+
+      // Require valid link
+      if (!product.link) return false;
+
+      return true;
+    });
 }
 
 scrapeEbayWithPuppeteer("iphone 15", 5, {

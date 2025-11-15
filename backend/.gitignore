@@ -12,6 +12,7 @@ yarn.lock
 .env.development.local
 .env.test.local
 .env.production.local
+/environment/
 
 # Scraped data files
 *.json
@@ -75,6 +76,7 @@ screenshots/
 
 # Documentation build
 docs/_build/
+/document/
 
 # Python (if any Python scripts)
 __pycache__/

@@ -9,6 +9,7 @@ function ProductsPage() {
   
   const [selectedProducts, setSelectedProducts] = useState([])
   const [selectAll, setSelectAll] = useState(false)
+  const [productQuantities, setProductQuantities] = useState({}) // Track quantity for each product
   
   // Modal state
   const [showModal, setShowModal] = useState(false)
@@ -61,9 +62,30 @@ function ProductsPage() {
     setExportSuccess(false)
   }
 
+  const handleQuantityChange = (productId, quantity) => {
+    setProductQuantities(prev => ({
+      ...prev,
+      [productId]: Math.max(0, parseInt(quantity) || 0)
+    }))
+  }
+
+  const getProductQuantity = (productId) => {
+    return productQuantities[productId] || 100 // Default to 100
+  }
+
   const handleExportToShopify = async () => {
-    if (!shopDomain.trim() || !accessToken.trim()) {
+    // Clean and validate inputs
+    const cleanShopDomain = shopDomain.trim().replace(/[\r\n\t]/g, '');
+    const cleanAccessToken = accessToken.trim().replace(/[\r\n\t]/g, '');
+    
+    if (!cleanShopDomain || !cleanAccessToken) {
       setExportError('Vui lòng nhập đầy đủ Shop Domain và Access Token')
+      return
+    }
+    
+    // Validate token format (should start with shpat_ or shpca_ or shpss_)
+    if (!cleanAccessToken.match(/^shp[a-z]{2}_[a-zA-Z0-9_]+$/)) {
+      setExportError('Access Token không hợp lệ. Token phải bắt đầu với "shpat_", "shpca_", hoặc "shpss_"')
       return
     }
 
@@ -73,15 +95,25 @@ function ProductsPage() {
     try {
       const selectedData = products.filter(p => selectedProducts.includes(p.id))
       
+      // Add inventory quantity to each product
+      const productsWithInventory = selectedData.map(p => ({
+        ...p,
+        inventoryQuantity: getProductQuantity(p.id)
+      }))
+      
+      console.log(`Sending ${productsWithInventory.length} products to Shopify`);
+      console.log('First product:', productsWithInventory[0]?.name);
+      console.log('Last product:', productsWithInventory[productsWithInventory.length - 1]?.name);
+      
       const response = await fetch('http://localhost:3000/api/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          shopDomain: shopDomain.trim(),
-          accessToken: accessToken.trim(),
-          products: selectedData
+          shopDomain: cleanShopDomain,
+          accessToken: cleanAccessToken,
+          products: productsWithInventory
         })
       })
 
@@ -182,7 +214,8 @@ function ProductsPage() {
               <th className="price-col">Giá</th>
               <th className="rating-col">Rating</th>
               <th className="reviews-col">Số đánh giá</th>
-              <th className="id-col">ID</th>
+              <th className="quantity-col">Số lượng kho</th>
+              <th className="url-col">Link sản phẩm</th>
             </tr>
           </thead>
           <tbody>
@@ -232,8 +265,30 @@ function ProductsPage() {
                       {product.ratingNum || 0}
                     </span>
                   </td>
-                  <td className="id-col">
-                    <code>{product.id}</code>
+                  <td className="quantity-col">
+                    <input
+                      type="number"
+                      className="quantity-input"
+                      value={getProductQuantity(product.id)}
+                      onChange={(e) => handleQuantityChange(product.id, e.target.value)}
+                      min="0"
+                      placeholder="100"
+                    />
+                  </td>
+                  <td className="url-col">
+                    {product.url ? (
+                      <a
+                        href={product.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="product-link"
+                        title={product.url}
+                      >
+                        🔗 Xem
+                      </a>
+                    ) : (
+                      <span className="no-link">N/A</span>
+                    )}
                   </td>
                 </tr>
               ))
@@ -280,11 +335,12 @@ function ProductsPage() {
                       type="text"
                       id="shopDomain"
                       value={shopDomain}
-                      onChange={(e) => setShopDomain(e.target.value)}
+                      onChange={(e) => setShopDomain(e.target.value.trim())}
                       placeholder="your-store.myshopify.com"
                       disabled={isExporting}
+                      autoComplete="off"
                     />
-                    <small>Ví dụ: my-store.myshopify.com</small>
+                    <small>Ví dụ: my-store.myshopify.com hoặc my-store</small>
                   </div>
 
                   <div className="form-group-modal">
@@ -295,15 +351,17 @@ function ProductsPage() {
                       type="password"
                       id="accessToken"
                       value={accessToken}
-                      onChange={(e) => setAccessToken(e.target.value)}
+                      onChange={(e) => setAccessToken(e.target.value.trim())}
                       placeholder="shpat_xxxxxxxxxxxxx"
                       disabled={isExporting}
+                      autoComplete="off"
+                      spellCheck="false"
                     />
-                    <small>Admin API access token của Shopify</small>
+                    <small>Admin API access token của Shopify (bắt đầu với shpat_ hoặc shpca_)</small>
                   </div>
 
                   <div className="modal-info">
-                    <p>📦 Sẽ export <strong>{selectedProducts.length}</strong> sản phẩm</p>
+                    <p>📦 Sẽ export <strong>{selectedProducts.length}</strong> sản phẩm đã chọn</p>
                   </div>
                 </>
               )}

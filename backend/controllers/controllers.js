@@ -135,37 +135,33 @@ export const getProductsData = async (req, res) => {
       }
     }
 
+    // Always return simplified format with ALL scraped products
+    let evaluationId = null;
+    
+    // Get evaluation ID if stored
     if (aiEvaluationResult && aiEvaluationResult.storage && aiEvaluationResult.storage.evaluationId) {
-      try {
-        const evaluationData = await getEvaluationById(aiEvaluationResult.storage.evaluationId);
-
-        const products = transformToSimplifiedFormat(evaluationData);
-        
-        res.status(200).json({
-          success: true,
-          message: "Scraping and AI evaluation completed successfully",
-          evaluationId: aiEvaluationResult.storage.evaluationId,
-          platform,
-          query: productName,
-          totalProducts: products.length,
-          products,
-        });
-        return;
-      } catch (retrievalError) {
-        console.error('Failed to retrieve from Firebase:', retrievalError.message);
-      }
+      evaluationId = aiEvaluationResult.storage.evaluationId;
     }
+    
+    // Transform ALL scraped products to simplified format
+    const products = scrapedProducts.map(product => ({
+      id: product.id || (product.link ? product.link.split('/').pop() : null) || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: product.name || product.title || 'Unknown Product',
+      price: product.price || 0,
+      avgRating: product.rating_average || product.rating || 0,
+      ratingNum: product.review_count || product.reviewCount || 0,
+      imageUrl: product.thumbnail_url || product.imageUrl || product.image || null,
+      url: product.link || product.url || null, // Add product URL
+    }));
 
     res.status(200).json({
       success: true,
       message: "Scraping and AI evaluation completed successfully",
-      scraping: {
-        platform,
-        query: productName,
-        totalProducts: scrapedProducts.length,
-        products: scrapedProducts,
-      },
-      aiEvaluation: aiEvaluationResult,
+      evaluationId,
+      platform,
+      query: productName,
+      totalProducts: products.length,
+      products,
     });
 
   } catch (error) {

@@ -29,12 +29,12 @@ const aiConfig = {
     trendWeight: 0.00,
   },
 
-  // Quality thresholds
+  // Quality thresholds (more lenient for platforms like eBay with fewer reviews)
   defaultThresholds: {
-    minReviewScore: 2.0,
-    minReviewCount: 10,
-    minProfitMargin: 0.20,
-    minFinalScore: 0.50,
+    minReviewScore: 2.0,      // Minimum rating when product HAS enough reviews
+    minReviewCount: 5,         // Reduced from 10 to 5 - eBay products often have fewer reviews
+    minProfitMargin: 0.15,     // Reduced from 0.20 to 0.15 (15%) - slightly more lenient
+    minFinalScore: 0.40,       // Reduced from 0.50 to 0.40 - allow more products through
   },
 
   // Price tiers for markup calculation

@@ -53,10 +53,23 @@ export const calculateProfitScore = (profitMargin) => {
 };
 
 // Calculate review score (0-1)
+// More lenient for products with fewer reviews (eBay scenario)
 export const calculateReviewScore = (rating, reviewCount) => {
   const thresholds = aiConfig.defaultThresholds;
   
-  if (reviewCount < thresholds.minReviewCount) return 0;
+  // If product has NO reviews at all, return base score of 0.3 (allow it to pass if other metrics are good)
+  if (reviewCount === 0) return 0.3;
+  
+  // If has reviews but below minimum, still give partial credit based on rating quality
+  if (reviewCount < thresholds.minReviewCount) {
+    if (rating < thresholds.minReviewScore) return 0;
+    // Partial score: good rating with few reviews is better than nothing
+    const ratingScore = (rating / 5) * 0.6; // Max 0.6 for low review count
+    const reviewRatio = reviewCount / thresholds.minReviewCount;
+    return ratingScore * (0.5 + (reviewRatio * 0.5)); // Scale between 0.5-1.0 of rating score
+  }
+  
+  // Standard scoring for products meeting minimum review threshold
   if (rating < thresholds.minReviewScore) return 0;
 
   const ratingScore = rating / 5;
@@ -124,13 +137,25 @@ export const scoreProduct = (product, criteria = {}) => {
   const trendScore = calculateTrendScore(product);
   const finalScore = calculateFinalScore(profitScore, reviewScore, trendScore, weights);
 
-  // Check if meets thresholds
-  // For products with reviews: require minimum rating and review count
-  // For products without reviews: only check profit margin and final score
-  const hasReviews = reviewCount > 0;
-  const meetsReviewThresholds = hasReviews 
-    ? (rating >= thresholds.minReviewScore && reviewCount >= thresholds.minReviewCount)
-    : true; // Allow products without reviews if other criteria are met
+  // Check if meets thresholds - More lenient approach
+  // For products with NO reviews: only check profit and final score
+  // For products with FEW reviews (1-9): lower rating requirement to 3.0
+  // For products with reviews >= minimum: standard thresholds
+  const hasNoReviews = reviewCount === 0;
+  const hasFewReviews = reviewCount > 0 && reviewCount < thresholds.minReviewCount;
+  const hasEnoughReviews = reviewCount >= thresholds.minReviewCount;
+  
+  let meetsReviewThresholds;
+  if (hasNoReviews) {
+    // No reviews? That's OK if profit and final score are good
+    meetsReviewThresholds = true;
+  } else if (hasFewReviews) {
+    // Few reviews? Lower rating bar to 3.0 (was 2.0, but we want quality)
+    meetsReviewThresholds = rating >= 3.0;
+  } else {
+    // Enough reviews? Use standard threshold
+    meetsReviewThresholds = rating >= thresholds.minReviewScore;
+  }
     
   const meetsThresholds = 
     meetsReviewThresholds &&

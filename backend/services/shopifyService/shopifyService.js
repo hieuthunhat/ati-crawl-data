@@ -32,6 +32,30 @@ export const createShopifyProduct = async (shopify, product, locationId) => {
         // Prepare media/images for product
         const imageUrl = product.imageUrl || product.thumbnail_url || product.image;
 
+        // Generate a short, unique SKU (max 255 chars for Shopify)
+        // Use product ID if it's short enough, otherwise create a hash-based SKU
+        let sku = '';
+        const productIdStr = product.id?.toString() || '';
+        
+        if (productIdStr.length > 0 && productIdStr.length <= 200) {
+            // Use product ID if it's reasonable length
+            sku = `SKU-${productIdStr}`;
+        } else if (productIdStr.length > 200) {
+            // For very long IDs, use a hash-based approach
+            const hash = productIdStr.split('').reduce((acc, char) => {
+                return ((acc << 5) - acc) + char.charCodeAt(0);
+            }, 0);
+            sku = `SKU-${Math.abs(hash)}-${Date.now()}`;
+        } else {
+            // No ID available, use timestamp
+            sku = `SKU-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+        }
+        
+        // Ensure SKU is within Shopify's 255 character limit
+        if (sku.length > 255) {
+            sku = sku.substring(0, 255);
+        }
+
         // GraphQL mutation (without media - will add separately)
         const mutation = `
             mutation CreateProductWithLocation(
@@ -98,10 +122,10 @@ export const createShopifyProduct = async (shopify, product, locationId) => {
             locationId: locationId,
             quantity: inventoryQuantity,
             price: priceFormatted,  // Just the amount as string, no currencyCode object
-            sku: product.id?.toString() || `SKU-${Date.now()}`
+            sku: sku  // Use the generated short SKU
         };
 
-        console.log(`Creating Shopify product: ${variables.title} (Price: ${priceFormatted}, Stock: ${inventoryQuantity})`);
+        console.log(`Creating Shopify product: ${variables.title} (Price: ${priceFormatted}, Stock: ${inventoryQuantity}, SKU: ${sku})`);
 
         // Execute GraphQL mutation
         const result = await shopify.graphql(mutation, variables);

@@ -1,76 +1,21 @@
 import { scrapeEbayWithPuppeteer } from "../services/eBay/ebayScrapeService.js";
-import {
-  getCategoryByText,
-  scrapeChototWithPuppeteer,
-} from "../services/Chotot/chototScrapeService.js";
 import { scrapeTikiWithAPI } from "../services/Tiki/tikiScrapeService.js";
 import geminiService from "../services/geminiService.js";
 import scoringService from "../services/productScoringService.js";
-import { getAICollection, admin, storeEvaluation, getEvaluationById } from "../config/firebase-db.js";
-import aiConfig from "../config/ai-config.js";
-
-/**
- * Transform evaluation data to simplified format
- * Converts complex evaluation structure to simple product array
- * Uses suggested selling price from AI scoring
- * Only returns products that passed quality thresholds
- */
-const transformToSimplifiedFormat = (evaluationData) => {
-  if (!evaluationData.scoredProducts || evaluationData.scoredProducts.length === 0) {
-    return [];
-  }
-
-  // Create a map of scraped products for quick lookup of additional data
-  const scrapedProductsMap = new Map();
-  if (evaluationData.scrapedProducts) {
-    evaluationData.scrapedProducts.forEach(p => {
-      const id = p.id || p.productId || (p.name || p.title);
-      if (id) scrapedProductsMap.set(String(id), p);
-    });
-  }
-
-  return evaluationData.scoredProducts
-    .filter(scoredProduct => scoredProduct.meetsThresholds === true) // Only scored products that passed quality checks
-    .map((scoredProduct, index) => {
-      // Get original scraped product for image and other details
-      const originalProduct = scrapedProductsMap.get(String(scoredProduct.productId)) || {};
-      
-      // Use suggested selling price instead of cost price
-      const price = scoredProduct.sellingPrice || scoredProduct.costPrice || 0;
-      
-      // Handle different image field names from original product
-      const imageUrl = originalProduct.thumbnail_url || 
-                       originalProduct.image || 
-                       originalProduct.imageUrl || 
-                       'https://via.placeholder.com/150';
-
-      return {
-        id: String(scoredProduct.productId || `sp${index + 1}`),
-        name: scoredProduct.productName || 'Unknown Product',
-        price: Math.round(Number(price)),
-        avgRating: Number(scoredProduct.rating || 0),
-        ratingNum: Number(scoredProduct.reviewCount || 0),
-        imageUrl,
-      };
-    });
-};
-
+import { admin, storeEvaluation, getEvaluationById } from "../config/firebase-db.js";
+import { transformToSimplifiedFormat } from "../presenters/productPresenter.js";
 
 export const getProductsData = async (req, res) => {
   const { 
     productName, 
     platform,
-    // AI evaluation parameters (optional)
     criteria = {},
     storeResults = true,
-    userId,
-    sessionId,
   } = req.body;
   
   try {
     let scrapedProducts = [];
-    
-    //Scrape products based on platform
+
     console.log(`\nStarting ${platform} scraping for: ${productName}`);
     
     switch (platform) {
@@ -79,10 +24,6 @@ export const getProductsData = async (req, res) => {
           keyword: productName,
           pages: 3,
         });
-        break;
-      case "chotot":
-        const category = getCategoryByText(productName);
-        scrapedProducts = await scrapeChototWithPuppeteer({ category });
         break;
       case "tiki":
         scrapedProducts = await scrapeTikiWithAPI({ keyword: productName, pages: 3 });
@@ -93,36 +34,28 @@ export const getProductsData = async (req, res) => {
 
     console.log(`Scraping completed: ${scrapedProducts.length} products found`);
 
-    //Automatic AI Evaluation
     let aiEvaluationResult = null;
     
     if (scrapedProducts.length > 0) {
       try {
         console.log(`\nStarting automatic AI evaluation...`);
         
-        // Mathematical scoring
         console.log('Step 1/3: Mathematical scoring...');
         const scoredProducts = scoringService.scoreProducts(scrapedProducts, criteria);
         console.log(`${scoredProducts.length} products passed quality thresholds`);
 
         if (scoredProducts.length > 0) {
-          // AI evaluation (top 10 products to avoid response truncation)
           console.log('Step 2/3: AI evaluation with Gemini 2.0 Flash...');
           const topProducts = scoredProducts.slice(0, 10);
-          
-          // Map scored products back to original products
+
           const productsForAI = topProducts.map(sp => {
-            // Try to find by ID first (Tiki products)
             let original = scrapedProducts.find(p => p.id === sp.productId);
-            
-            // If not found by ID, try matching by name/title (eBay/Chotot products)
+
             if (!original) {
               original = scrapedProducts.find(p => 
                 (p.name || p.title) === sp.productName
               );
             }
-            
-            // If still not found, try matching by link (extract ID from link)
             if (!original && sp.productId) {
               original = scrapedProducts.find(p => 
                 p.link && p.link.includes(sp.productId)
@@ -130,7 +63,7 @@ export const getProductsData = async (req, res) => {
             }
             
             return original;
-          }).filter(p => p !== undefined); // Remove any unmatched products
+          }).filter(p => p !== undefined);
           
           if (productsForAI.length === 0) {
             throw new Error('Failed to map scored products to original products');
@@ -141,12 +74,10 @@ export const getProductsData = async (req, res) => {
             criteria
           );
 
-          // Store results in Firebase and retrieve
           let storageResult = null;
           if (storeResults) {
             console.log('Step 3/3: Storing and retrieving results from Firebase...');
             
-            // Clean scraped products - remove undefined values
             const cleanedScrapedProducts = scrapedProducts.map(product => {
               const cleaned = {};
               Object.keys(product).forEach(key => {
@@ -165,8 +96,6 @@ export const getProductsData = async (req, res) => {
                 ...aiEvaluation.metadata,
                 platform,
                 searchQuery: productName,
-                userId: userId || 'anonymous',
-                sessionId: sessionId || `session-${Date.now()}`,
                 totalProducts: scrapedProducts.length,
                 qualifiedProducts: scoredProducts.length,
                 criteria,
@@ -206,42 +135,33 @@ export const getProductsData = async (req, res) => {
       }
     }
 
-    // Return comprehensive results
-    // If stored in Firebase, retrieve and return the evaluated products
+    // Always return simplified format with ALL scraped products
+    let evaluationId = null;
+    
+    // Get evaluation ID if stored
     if (aiEvaluationResult && aiEvaluationResult.storage && aiEvaluationResult.storage.evaluationId) {
-      try {
-        const evaluationData = await getEvaluationById(aiEvaluationResult.storage.evaluationId);
-        
-        // Transform to simplified format
-        const products = transformToSimplifiedFormat(evaluationData);
-        
-        res.status(200).json({
-          success: true,
-          message: "Scraping and AI evaluation completed successfully",
-          evaluationId: aiEvaluationResult.storage.evaluationId,
-          platform,
-          query: productName,
-          totalProducts: products.length,
-          products,
-        });
-        return;
-      } catch (retrievalError) {
-        console.error('Failed to retrieve from Firebase:', retrievalError.message);
-        // Fall through to default response
-      }
+      evaluationId = aiEvaluationResult.storage.evaluationId;
     }
+    
+    // Transform ALL scraped products to simplified format
+    const products = scrapedProducts.map(product => ({
+      id: product.id || (product.link ? product.link.split('/').pop() : null) || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: product.name || product.title || 'Unknown Product',
+      price: product.price || 0,
+      avgRating: product.rating_average || product.rating || 0,
+      ratingNum: product.review_count || product.reviewCount || 0,
+      imageUrl: product.thumbnail_url || product.imageUrl || product.image || null,
+      url: product.link || product.url || null, // Add product URL
+    }));
 
-    // Fallback response if Firebase retrieval fails or storage was disabled
     res.status(200).json({
       success: true,
       message: "Scraping and AI evaluation completed successfully",
-      scraping: {
-        platform,
-        query: productName,
-        totalProducts: scrapedProducts.length,
-        products: scrapedProducts,
-      },
-      aiEvaluation: aiEvaluationResult,
+      evaluationId,
+      platform,
+      query: productName,
+      totalProducts: products.length,
+      products,
     });
 
   } catch (error) {
@@ -271,7 +191,6 @@ export const getEvaluationByIdController = async (req, res) => {
     console.log(`Retrieving evaluation ${id} from Firebase...`);
     const evaluationData = await getEvaluationById(id);
 
-    // Transform to simplified format
     const products = transformToSimplifiedFormat(evaluationData);
 
     res.status(200).json({

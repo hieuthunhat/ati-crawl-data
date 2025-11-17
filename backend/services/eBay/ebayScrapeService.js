@@ -207,7 +207,6 @@ function normalizeEbayProducts(products) {
       // Require valid price
       if (!product.price || product.price <= 0) return false;
 
-      // Require valid link
       if (!product.link) return false;
 
       return true;

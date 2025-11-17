@@ -4,7 +4,7 @@ import { batchCreateProducts } from "../controllers/shopifyController.js";
 
 const router = express.Router();
 
-router.post("/crawledProducts", getProductsData);
+router.post("/crawl-products", getProductsData);
 
 router.get("/evaluations/:id", getEvaluationByIdController);
 

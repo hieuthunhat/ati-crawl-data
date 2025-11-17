@@ -1,0 +1,13 @@
+query GetLocations {
+  locations(first: 1) {
+    edges {
+      node {
+        id
+        name
+        address {
+          address1
+        }
+      }
+    }
+  }
+}

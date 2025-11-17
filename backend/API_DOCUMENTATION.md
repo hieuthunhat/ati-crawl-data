@@ -65,25 +65,23 @@ Scrapes products from supported platforms (Tiki, Chotot, eBay) and **automatical
 | `criteria` | object | No | Custom AI evaluation criteria |
 | `criteria.weights` | object | No | Scoring weights (must sum to 1.0) - defaults from config |
 | `criteria.thresholds` | object | No | Quality threshold values - defaults from config |
-| `storeResults` | boolean | No | Save evaluation to Firebase (default: true) |
-| `userId` | string | No | User identifier for filtering history |
-| `sessionId` | string | No | Session identifier for grouping evaluations |
+| `userId` | string | No | User identifier for metadata tracking (optional) |
+| `sessionId` | string | No | Session identifier for metadata tracking (optional) |
 
 **Processing Pipeline**:
 1. **Scraping** - Extracts products from selected platform (2-5 seconds)
 2. **Mathematical Scoring** - Calculates profit, review, trend scores (1-2 seconds)
 3. **AI Evaluation** - Gemini analyzes top 10 products (10-20 seconds)
-4. **Firebase Storage & Auto-Retrieval** - Saves and retrieves evaluation (1-2 seconds)
-5. **Response** - Returns evaluated products from Firebase in clean format
+4. **Response Formatting** - Transforms to clean JSON format (instant)
+5. **Response** - Returns formatted evaluated products directly
 
-**Key Feature**: Results are automatically stored in Firebase and retrieved for the response, ensuring consistent data format.
+**Key Feature**: Direct response without Firebase storage - faster and simpler pipeline.
 
 **Response** (200 OK):
 ````json
 {
   "success": true,
   "message": "Scraping and AI evaluation completed successfully",
-  "evaluationId": "eval_1730887800_abc123",
   "platform": "tiki",
   "query": "tai nghe bluetooth",
   "totalProducts": 50,

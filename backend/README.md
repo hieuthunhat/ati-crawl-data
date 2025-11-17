@@ -207,8 +207,8 @@ POST /api/crawledProducts
 1. **Scraping** - Extracts products from selected platform (2-5 seconds)
 2. **Mathematical Scoring** - Calculates profit, review, and trend scores (1-2 seconds)
 3. **AI Evaluation** - Gemini analyzes top 10 products (10-20 seconds)
-4. **Firebase Storage & Retrieval** - Saves evaluation and automatically retrieves it for response (1-2 seconds)
-5. **Response** - Returns evaluated products from Firebase (clean, consistent format)
+4. **Response Formatting** - Transforms to clean JSON format (instant)
+5. **Response** - Returns formatted evaluated products directly
 
 **Note:** All AI parameters are optional. If not provided, default values from `ai-config.js` are used.
 
@@ -260,7 +260,6 @@ GET /api/evaluations/eval_abc123xyz
 {
   "success": true,
   "message": "Scraping and AI evaluation completed successfully",
-  "evaluationId": "eval_abc123xyz",
   "platform": "tiki",
   "query": "tai nghe bluetooth",
   "totalProducts": 50,

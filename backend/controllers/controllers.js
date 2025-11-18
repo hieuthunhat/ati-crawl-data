@@ -3,18 +3,11 @@ import { scrapeTikiWithAPI } from "../services/Tiki/tikiScrapeService.js";
 import geminiService from "../services/evaluation/geminiService.js";
 import scoringService from "../services/evaluation/productScoringService.js";
 
-/**
- * Transform evaluation data to simplified format
- * Converts complex evaluation structure to simple product array
- * Uses suggested selling price from AI scoring
- * Only returns products that passed quality thresholds
- */
 const transformToSimplifiedFormat = (evaluationData) => {
   if (!evaluationData.scoredProducts || evaluationData.scoredProducts.length === 0) {
     return [];
   }
 
-  // Create a map of scraped products for quick lookup of additional data
   const scrapedProductsMap = new Map();
   if (evaluationData.scrapedProducts) {
     evaluationData.scrapedProducts.forEach(p => {
@@ -24,21 +17,14 @@ const transformToSimplifiedFormat = (evaluationData) => {
   }
 
   return evaluationData.scoredProducts
-    .filter(scoredProduct => scoredProduct.meetsThresholds === true) // Only scored products that passed quality checks
+    .filter(scoredProduct => scoredProduct.meetsThresholds === true)
     .map((scoredProduct, index) => {
-      // Get original scraped product for image and other details
       const originalProduct = scrapedProductsMap.get(String(scoredProduct.productId)) || {};
-      
-      // Use suggested selling price instead of cost price
       const price = scoredProduct.sellingPrice || scoredProduct.costPrice || 0;
-      
-      // Handle different image field names from original product
       const imageUrl = originalProduct.thumbnail_url || 
                        originalProduct.image || 
                        originalProduct.imageUrl || 
                        'https://via.placeholder.com/150';
-
-      // Handle different URL field names from original product
       const productUrl = originalProduct.link || 
                          originalProduct.url || 
                          originalProduct.productUrl || 
@@ -96,7 +82,6 @@ export const getProductsData = async (req, res) => {
         console.log(`${scoredProducts.length} products passed quality thresholds`);
 
         if (scoredProducts.length > 0) {
-          // AI evaluation (top 10 products to avoid response truncation)
           console.log('Step 2/3: AI evaluation with Gemini 2.0 Flash...');
           const topProducts = scoredProducts.slice(0, 10);
 
@@ -126,7 +111,6 @@ export const getProductsData = async (req, res) => {
             criteria
           );
 
-          // Clean scraped products - remove undefined values
           const cleanedScrapedProducts = scrapedProducts.map(product => {
             const cleaned = {};
             Object.keys(product).forEach(key => {
@@ -137,7 +121,6 @@ export const getProductsData = async (req, res) => {
             return cleaned;
           });
 
-          // Prepare evaluation data structure (only top 10 AI-evaluated products)
           const evaluationData = {
             evaluation: aiEvaluation.evaluation,
             scoredProducts: topProducts,
@@ -176,7 +159,6 @@ export const getProductsData = async (req, res) => {
       }
     }
 
-    // Return formatted products directly
     if (aiEvaluationResult && aiEvaluationResult.evaluationData) {
       const products = transformToSimplifiedFormat(aiEvaluationResult.evaluationData);
       
@@ -191,7 +173,6 @@ export const getProductsData = async (req, res) => {
       return;
     }
 
-    // Fallback response if AI evaluation failed or was skipped
     res.status(200).json({
       success: true,
       message: "Scraping completed (no AI evaluation)",

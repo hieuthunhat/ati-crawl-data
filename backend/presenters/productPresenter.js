@@ -6,7 +6,6 @@ export const transformToSimplifiedFormat = (evaluationData) => {
     return [];
   }
 
-  // Create a map of scraped products for quick lookup of additional data
   const scrapedProductsMap = new Map();
   if (evaluationData.scrapedProducts) {
     evaluationData.scrapedProducts.forEach((p) => {
@@ -16,16 +15,13 @@ export const transformToSimplifiedFormat = (evaluationData) => {
   }
 
   return evaluationData.scoredProducts
-    .filter((scoredProduct) => scoredProduct.meetsThresholds === true) // Only scored products that passed quality checks
+    .filter((scoredProduct) => scoredProduct.meetsThresholds === true)
     .map((scoredProduct, index) => {
-      // Get original scraped product for image and other details
       const originalProduct =
         scrapedProductsMap.get(String(scoredProduct.productId)) || {};
 
-      // Use suggested selling price instead of cost price
       const price = scoredProduct.sellingPrice || scoredProduct.costPrice || 0;
 
-      // Handle different image field names from original product
       const imageUrl =
         originalProduct.thumbnail_url ||
         originalProduct.image ||

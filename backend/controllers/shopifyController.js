@@ -1,12 +1,6 @@
 import Shopify from "shopify-api-node";
 import { createShopifyProduct } from "../services/shopifyService/shopifyService.js";
 
-/**
- * Batch create products to Shopify store
- * @param {*} req - Request with shopDomain, accessToken, and products array
- * @param {*} res - Response
- */
-
 export const batchCreateProducts = async (req, res) => {
   try {
     const { shopDomain, accessToken, products } = req.body;
@@ -22,7 +16,6 @@ export const batchCreateProducts = async (req, res) => {
       console.log("Last product:", products[products.length - 1].name);
     }
 
-    // Validate inputs
     if (!shopDomain || !accessToken) {
       return res.status(400).json({
         success: false,
@@ -30,7 +23,6 @@ export const batchCreateProducts = async (req, res) => {
       });
     }
 
-    // Clean and validate access token (remove any whitespace, newlines, etc.)
     const cleanAccessToken = accessToken.toString().trim().replace(/[\r\n\t]/g, '');
     
     if (!cleanAccessToken || cleanAccessToken.length < 10) {
@@ -47,8 +39,6 @@ export const batchCreateProducts = async (req, res) => {
       });
     }
 
-    // Initialize Shopify client
-    // Clean shop domain: remove protocol, .myshopify.com suffix, trailing slashes
     let cleanShopName = shopDomain
       .replace(/^https?:\/\//, '')  // Remove http:// or https://
       .replace(/\/$/, '')            // Remove trailing slash
@@ -61,7 +51,6 @@ export const batchCreateProducts = async (req, res) => {
       accessToken: cleanAccessToken,  // Use cleaned token
     });
 
-    // Get location ID (required for GraphQL productSet)
     console.log("Fetching Shopify location...");
     const locationQuery = `query GetLocations {
       locations(first: 1) {
@@ -92,7 +81,6 @@ export const batchCreateProducts = async (req, res) => {
     const results = [];
     const errors = [];
 
-    // Create products one by one
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
       try {
@@ -126,7 +114,6 @@ export const batchCreateProducts = async (req, res) => {
       }
     }
 
-    // Return summary
     res.status(200).json({
       success: true,
       message: `Successfully created ${results.length} out of ${products.length} products`,

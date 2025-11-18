@@ -127,7 +127,6 @@ function InputPage() {
             >
               <option value="tiki">Tiki</option>
               <option value="ebay">eBay</option>
-              <option value="chotot">Chợ Tốt</option>
             </select>
           </div>
         </div>

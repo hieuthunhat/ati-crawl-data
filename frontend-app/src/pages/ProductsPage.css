@@ -285,6 +285,29 @@
   font-size: 0.875rem;
 }
 
+.url-hidden {
+  color: #999;
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+/* Show URL Column Styles */
+.show-url-col {
+  width: 100px;
+  text-align: center;
+}
+
+.show-url-col input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.show-url-col input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .no-data {
   text-align: center;
   padding: 3rem;

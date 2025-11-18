@@ -9,7 +9,8 @@ function ProductsPage() {
   
   const [selectedProducts, setSelectedProducts] = useState([])
   const [selectAll, setSelectAll] = useState(false)
-  const [productQuantities, setProductQuantities] = useState({}) // Track quantity for each product
+  const [productQuantities, setProductQuantities] = useState({})
+  const [showUrlForProducts, setShowUrlForProducts] = useState({}) // Track quantity for each product
   
   // Modal state
   const [showModal, setShowModal] = useState(false)
@@ -70,7 +71,18 @@ function ProductsPage() {
   }
 
   const getProductQuantity = (productId) => {
-    return productQuantities[productId] || 100 // Default to 100
+    return productQuantities[productId] || 100
+  }
+
+  const handleToggleShowUrl = (productId) => {
+    setShowUrlForProducts(prev => ({
+      ...prev,
+      [productId]: !prev[productId]
+    }))
+  }
+
+  const shouldShowUrl = (productId) => {
+    return showUrlForProducts[productId] || false
   }
 
   const handleExportToShopify = async () => {
@@ -95,10 +107,10 @@ function ProductsPage() {
     try {
       const selectedData = products.filter(p => selectedProducts.includes(p.id))
       
-      // Add inventory quantity to each product
       const productsWithInventory = selectedData.map(p => ({
         ...p,
-        inventoryQuantity: getProductQuantity(p.id)
+        inventoryQuantity: getProductQuantity(p.id),
+        url: shouldShowUrl(p.id) ? p.url : undefined
       }))
       
       console.log(`Sending ${productsWithInventory.length} products to Shopify`);
@@ -216,12 +228,13 @@ function ProductsPage() {
               <th className="reviews-col">Số đánh giá</th>
               <th className="quantity-col">Số lượng kho</th>
               <th className="url-col">Link sản phẩm</th>
+              <th className="show-url-col">Thêm URL vào Shopify</th>
             </tr>
           </thead>
           <tbody>
             {products.length === 0 ? (
               <tr>
-                <td colSpan="7" className="no-data">
+                <td colSpan="9" className="no-data">
                   Không có dữ liệu
                 </td>
               </tr>
@@ -289,6 +302,15 @@ function ProductsPage() {
                     ) : (
                       <span className="no-link">N/A</span>
                     )}
+                  </td>
+                  <td className="show-url-col">
+                    <input
+                      type="checkbox"
+                      checked={shouldShowUrl(product.id)}
+                      onChange={() => handleToggleShowUrl(product.id)}
+                      disabled={!product.url}
+                      title={shouldShowUrl(product.id) ? "URL sẽ được thêm vào Shopify" : "URL sẽ không được thêm vào Shopify"}
+                    />
                   </td>
                 </tr>
               ))

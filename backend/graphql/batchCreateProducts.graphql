@@ -1,0 +1,34 @@
+mutation CreateProductWithLocation(
+  $title: String!,
+  $locationId: ID!,
+  $quantity: Int!,
+  $price: Int!
+) {
+  productSet(
+    synchronous: true
+    input: {
+      title: $title
+      variants: [
+        {
+          price: $price
+          inventoryQuantities: [
+            {
+              locationId: $locationId
+              name: "available"
+              quantity: $quantity
+            }
+          ]
+        }
+      ]
+    }
+  ) {
+    product {
+      id
+      title
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}

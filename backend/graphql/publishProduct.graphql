@@ -1,0 +1,81 @@
+# Publish Product to Sales Channels
+# This mutation publishes a product to specified sales channels (Online Store, POS, etc.)
+
+# Step 1: Get available publications (sales channels)
+query GetPublications {
+  publications(first: 10) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}
+
+# Step 2: Publish product to selected channels
+mutation publishProduct($input: ProductPublishInput!) {
+  productPublish(input: $input) {
+    product {
+      id
+      title
+    }
+    productPublications {
+      publication {
+        id
+        name
+      }
+      publishDate
+      isPublished
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Example variables:
+# {
+#   "input": {
+#     "id": "gid://shopify/Product/8726827663420",
+#     "productPublications": [
+#       {
+#         "publicationId": "gid://shopify/Publication/123456789"
+#       }
+#     ]
+#   }
+# }
+
+# Expected response on success:
+# {
+#   "data": {
+#     "productPublish": {
+#       "product": {
+#         "id": "gid://shopify/Product/8726827663420",
+#         "title": "Product Name"
+#       },
+#       "productPublications": [
+#         {
+#           "publication": {
+#             "id": "gid://shopify/Publication/123456789",
+#             "name": "Online Store"
+#           },
+#           "publishDate": "2025-11-18T00:00:00Z",
+#           "isPublished": true
+#         }
+#       ],
+#       "userErrors": []
+#     }
+#   }
+# }
+
+# Notes:
+# - You must first query available publications to get their IDs
+# - Input format is ProductPublishInput! (not separate id and input arrays)
+# - ProductPublishInput contains:
+#   - id: ID! (Product GID)
+#   - productPublications: [ProductPublicationInput!]!
+# - Can publish to multiple channels at once
+# - Products must exist before they can be published
+# - Check isPublished: true to verify successful publication

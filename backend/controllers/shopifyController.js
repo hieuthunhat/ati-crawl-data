@@ -48,11 +48,12 @@ export const batchCreateProducts = async (req, res) => {
     }
 
     // Initialize Shopify client
-    // Clean shop domain: remove protocol, .myshopify.com suffix, trailing slashes
+    // Clean shop domain: get just the shop name (without protocol, .myshopify.com, trailing slash)
     let cleanShopName = shopDomain
-      .replace(/^https?:\/\//, '')  // Remove http:// or https://
-      .replace(/\/$/, '')            // Remove trailing slash
-      .replace('.myshopify.com', ''); // Remove .myshopify.com
+      .trim()
+      .replace(/^https?:\/\//, '')          // Remove http:// or https://
+      .replace(/\/$/, '')                    // Remove trailing slash
+      .replace(/\.myshopify\.com.*$/, '');  // Remove .myshopify.com and anything after it
     
     console.log(`Connecting to Shopify: ${cleanShopName}.myshopify.com`);
     

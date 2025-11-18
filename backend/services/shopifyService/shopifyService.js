@@ -2,10 +2,15 @@ import Shopify from "shopify-api-node"
 
 /**
  * Create a product in Shopify using GraphQL productSet mutation
+ * The function will:
+ * 1. Create the product with variants and inventory
+ * 2. Upload product image via REST API
+ * 3. Publish the product to current sales channel (Online Store)
+ * 
  * @param {Shopify} shopify - Shopify API instance
  * @param {Object} product - Product data from scraper
  * @param {string} locationId - Shopify location ID (e.g., "gid://shopify/Location/12345")
- * @returns {Promise<Object>} Created product data
+ * @returns {Promise<Object>} Created product data with id, title, handle, and variant info
  */
 export const createShopifyProduct = async (shopify, product, locationId) => {
     try {
@@ -155,6 +160,82 @@ export const createShopifyProduct = async (shopify, product, locationId) => {
                 console.warn(`⚠ Failed to add image: ${imgError.message}`);
                 // Don't fail the whole operation if image upload fails
             }
+        }
+
+        // Publish product to current sales channel
+        try {
+            console.log(`Attempting to publish product: ${createdProduct.id}`);
+            
+            const publishMutation = `
+                mutation publishProduct($input: ProductPublishInput!) {
+                    productPublish(input: $input) {
+                        product {
+                            id
+                            title
+                        }
+                        productPublications {
+                            publishDate
+                            isPublished
+                        }
+                        userErrors {
+                            field
+                            message
+                        }
+                    }
+                }
+            `;
+
+            // Get all available publications (sales channels)
+            const publicationsQuery = `
+                query {
+                    publications(first: 10) {
+                        edges {
+                            node {
+                                id
+                                name
+                            }
+                        }
+                    }
+                }
+            `;
+
+            const publicationsResult = await shopify.graphql(publicationsQuery);
+            const publications = publicationsResult?.publications?.edges || [];
+            
+            if (publications.length === 0) {
+                console.warn(`⚠ No publications available to publish product`);
+                return;
+            }
+
+            // Publish to all available sales channels
+            const publishInput = {
+                id: createdProduct.id,
+                productPublications: publications.map(pub => ({
+                    publicationId: pub.node.id
+                }))
+            };
+
+            const publishResult = await shopify.graphql(publishMutation, {
+                input: publishInput
+            });
+
+            console.log('Publish result:', JSON.stringify(publishResult, null, 2));
+
+            if (publishResult.productPublish?.userErrors?.length > 0) {
+                const errors = publishResult.productPublish.userErrors
+                    .map(e => `${e.field}: ${e.message}`).join(', ');
+                console.warn(`⚠ Failed to publish product: ${errors}`);
+            } else {
+                const pubCount = publishResult.productPublish?.productPublications?.length || 0;
+                const publishedCount = publishResult.productPublish?.productPublications
+                    ?.filter(p => p.isPublished)
+                    .length || 0;
+                console.log(`✓ Product published successfully (${publishedCount}/${pubCount} channels)`);
+            }
+        } catch (publishError) {
+            console.warn(`⚠ Failed to publish product: ${publishError.message}`);
+            console.error('Publish error details:', publishError);
+            // Don't fail the whole operation if publish fails
         }
 
         console.log(`✓ Product created successfully: ${createdProduct.title} (ID: ${createdProduct.id})`);

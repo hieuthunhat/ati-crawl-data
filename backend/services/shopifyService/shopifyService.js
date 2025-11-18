@@ -1,27 +1,11 @@
 import Shopify from "shopify-api-node"
 
-/**
- * Create a product in Shopify using GraphQL productSet mutation
- * The function will:
- * 1. Create the product with variants and inventory
- * 2. Upload product image via REST API
- * 3. Publish the product to current sales channel (Online Store)
- * 
- * @param {Shopify} shopify - Shopify API instance
- * @param {Object} product - Product data from scraper
- * @param {string} locationId - Shopify location ID (e.g., "gid://shopify/Location/12345")
- * @returns {Promise<Object>} Created product data with id, title, handle, and variant info
- */
 export const createShopifyProduct = async (shopify, product, locationId) => {
     try {
         const inventoryQuantity = product.inventoryQuantity || 100;
-        
-        // Convert VND to USD (1 USD = ~25,000 VND)
-        // Or keep as VND if store currency is VND
-        // For this example, we'll divide by 1000 to make prices readable
+
         const priceFormatted = product.price ? (product.price / 1000).toFixed(2) : "0.00";
 
-        // Build product description
         let bodyHtml = `<p>${product.name || product.title}</p>`;
         
         if (product.avgRating || product.rating_average || product.rating) {
@@ -33,35 +17,26 @@ export const createShopifyProduct = async (shopify, product, locationId) => {
         if (product.url) {
             bodyHtml += `<p>🔗 <a href="${product.url}" target="_blank">View Original Product</a></p>`;
         }
-
-        // Prepare media/images for product
         const imageUrl = product.imageUrl || product.thumbnail_url || product.image;
 
-        // Generate a short, unique SKU (max 255 chars for Shopify)
-        // Use product ID if it's short enough, otherwise create a hash-based SKU
         let sku = '';
         const productIdStr = product.id?.toString() || '';
         
         if (productIdStr.length > 0 && productIdStr.length <= 200) {
-            // Use product ID if it's reasonable length
             sku = `SKU-${productIdStr}`;
         } else if (productIdStr.length > 200) {
-            // For very long IDs, use a hash-based approach
             const hash = productIdStr.split('').reduce((acc, char) => {
                 return ((acc << 5) - acc) + char.charCodeAt(0);
             }, 0);
             sku = `SKU-${Math.abs(hash)}-${Date.now()}`;
         } else {
-            // No ID available, use timestamp
             sku = `SKU-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
         }
         
-        // Ensure SKU is within Shopify's 255 character limit
         if (sku.length > 255) {
             sku = sku.substring(0, 255);
         }
 
-        // GraphQL mutation (without media - will add separately)
         const mutation = `
             mutation CreateProductWithLocation(
                 $title: String!,
@@ -126,16 +101,14 @@ export const createShopifyProduct = async (shopify, product, locationId) => {
             bodyHtml: bodyHtml,
             locationId: locationId,
             quantity: inventoryQuantity,
-            price: priceFormatted,  // Just the amount as string, no currencyCode object
-            sku: sku  // Use the generated short SKU
+            price: priceFormatted,
+            sku: sku
         };
 
         console.log(`Creating Shopify product: ${variables.title} (Price: ${priceFormatted}, Stock: ${inventoryQuantity}, SKU: ${sku})`);
 
-        // Execute GraphQL mutation
         const result = await shopify.graphql(mutation, variables);
 
-        // Check for errors
         if (result.productSet?.userErrors && result.productSet.userErrors.length > 0) {
             const errors = result.productSet.userErrors.map(e => `${e.field}: ${e.message}`).join(', ');
             throw new Error(`Shopify API errors: ${errors}`);
@@ -145,6 +118,77 @@ export const createShopifyProduct = async (shopify, product, locationId) => {
         
         if (!createdProduct) {
             throw new Error('Product creation failed: No product returned');
+        }
+
+        // Update inventory policy to CONTINUE (allow selling when out of stock)
+        try {
+            console.log(`Updating inventory policy for product: ${createdProduct.id}`);
+            
+            // Query product to get variant ID
+            const productQuery = `
+                query ProductWithVariants($productId: ID!) {
+                    product(id: $productId) {
+                        id
+                        title
+                        variants(first: 10) {
+                            nodes {
+                                id
+                                title
+                            }
+                        }
+                    }
+                }
+            `;
+            
+            const productQueryResult = await shopify.graphql(productQuery, {
+                productId: createdProduct.id
+            });
+            
+            const variantId = productQueryResult?.product?.variants?.nodes?.[0]?.id;
+            
+            if (variantId) {
+                // Update variant with inventory policy CONTINUE using bulk update
+                const updateVariantMutation = `
+                    mutation UpdateVariantFully($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+                        productVariantsBulkUpdate(
+                            productId: $productId
+                            variants: $variants
+                        ) {
+                            product {
+                                id
+                            }
+                            productVariants {
+                                id
+                                inventoryPolicy
+                                price
+                            }
+                            userErrors {
+                                field
+                                message
+                            }
+                        }
+                    }
+                `;
+                
+                const updateResult = await shopify.graphql(updateVariantMutation, {
+                    productId: createdProduct.id,
+                    variants: [{
+                        id: variantId,
+                        inventoryPolicy: 'CONTINUE'
+                    }]
+                });
+                
+                if (updateResult.productVariantsBulkUpdate?.userErrors?.length > 0) {
+                    const errors = updateResult.productVariantsBulkUpdate.userErrors
+                        .map(e => `${e.field}: ${e.message}`).join(', ');
+                    console.warn(`⚠ Failed to update variant: ${errors}`);
+                } else {
+                    console.log(`✓ Variant updated successfully with CONTINUE policy: ${variantId}`);
+                }
+            }
+        } catch (policyError) {
+            console.warn(`⚠ Failed to update variant: ${policyError.message}`);
+            // Don't fail the whole operation if variant update fails
         }
 
         // Add image separately if available
@@ -158,24 +202,19 @@ export const createShopifyProduct = async (shopify, product, locationId) => {
                 console.log(`✓ Image added for product: ${createdProduct.title}`);
             } catch (imgError) {
                 console.warn(`⚠ Failed to add image: ${imgError.message}`);
-                // Don't fail the whole operation if image upload fails
             }
         }
 
-        // Publish product to current sales channel
         try {
             console.log(`Attempting to publish product: ${createdProduct.id}`);
             
             const publishMutation = `
-                mutation publishProduct($input: ProductPublishInput!) {
-                    productPublish(input: $input) {
-                        product {
-                            id
-                            title
-                        }
-                        productPublications {
-                            publishDate
-                            isPublished
+                mutation publishProduct($id: ID!, $input: [PublicationInput!]!) {
+                    publishablePublish(id: $id, input: $input) {
+                        publishable {
+                            resourcePublicationsCount {
+                                count
+                            }
                         }
                         userErrors {
                             field
@@ -185,13 +224,17 @@ export const createShopifyProduct = async (shopify, product, locationId) => {
                 }
             `;
 
-            // Get all available publications (sales channels)
+            // Get publications and find Online Store
             const publicationsQuery = `
-                query {
+                query getPublications {
                     publications(first: 10) {
                         edges {
                             node {
                                 id
+                                catalog {
+                                    id
+                                    title
+                                }
                                 name
                             }
                         }
@@ -207,30 +250,54 @@ export const createShopifyProduct = async (shopify, product, locationId) => {
                 return;
             }
 
-            // Publish to all available sales channels
-            const publishInput = {
-                id: createdProduct.id,
-                productPublications: publications.map(pub => ({
-                    publicationId: pub.node.id
-                }))
-            };
+            // Find Online Store publication
+            const onlineStorePublication = publications.find(pub => 
+                pub.node.catalog?.title === 'Online Store' || 
+                pub.node.name === 'Online Store'
+            );
+            
+            if (!onlineStorePublication) {
+                console.warn(`⚠ Online Store publication not found`);
+                // Fallback to first publication
+                const firstPublication = publications[0];
+                console.log(`Using fallback publication: ${firstPublication.node.name}`);
+                
+                const publishResult = await shopify.graphql(publishMutation, {
+                    id: createdProduct.id,
+                    input: [{
+                        publicationId: firstPublication.node.id
+                    }]
+                });
+
+                if (publishResult.publishablePublish?.userErrors?.length > 0) {
+                    const errors = publishResult.publishablePublish.userErrors
+                        .map(e => `${e.field}: ${e.message}`).join(', ');
+                    console.warn(`⚠ Failed to publish product: ${errors}`);
+                } else {
+                    const count = publishResult.publishablePublish?.publishable?.resourcePublicationsCount?.count || 0;
+                    console.log(`✓ Product published successfully (${count} channels)`);
+                }
+                return;
+            }
+
+            console.log(`Found Online Store publication: ${onlineStorePublication.node.id}`);
 
             const publishResult = await shopify.graphql(publishMutation, {
-                input: publishInput
+                id: createdProduct.id,
+                input: [{
+                    publicationId: onlineStorePublication.node.id
+                }]
             });
 
             console.log('Publish result:', JSON.stringify(publishResult, null, 2));
 
-            if (publishResult.productPublish?.userErrors?.length > 0) {
-                const errors = publishResult.productPublish.userErrors
+            if (publishResult.publishablePublish?.userErrors?.length > 0) {
+                const errors = publishResult.publishablePublish.userErrors
                     .map(e => `${e.field}: ${e.message}`).join(', ');
                 console.warn(`⚠ Failed to publish product: ${errors}`);
             } else {
-                const pubCount = publishResult.productPublish?.productPublications?.length || 0;
-                const publishedCount = publishResult.productPublish?.productPublications
-                    ?.filter(p => p.isPublished)
-                    .length || 0;
-                console.log(`✓ Product published successfully (${publishedCount}/${pubCount} channels)`);
+                const count = publishResult.publishablePublish?.publishable?.resourcePublicationsCount?.count || 0;
+                console.log(`✓ Product published to Online Store successfully (${count} channels)`);
             }
         } catch (publishError) {
             console.warn(`⚠ Failed to publish product: ${publishError.message}`);

@@ -107,8 +107,6 @@ async function scrapeEbayWithPuppeteer({keyword, pages = 3, options = {}}) {
               const reviewEl = card.querySelector('.s-card__product-reviews');
               if (reviewEl) {
                 const reviewText = reviewEl.textContent.trim();
-                // Extract number before "product ratings" text
-                // Format: "5.0 out of 5 stars.3 product ratings - ..."
                 const match = reviewText.match(/(\d+[\d,]*)\s+product\s+ratings?/i);
                 if (match) {
                   reviewCount = parseInt(match[1].replace(/,/g, ''));
@@ -153,20 +151,11 @@ async function scrapeEbayWithPuppeteer({keyword, pages = 3, options = {}}) {
     }
   }
 
-  // Normalize product data before returning
   const normalizedProducts = normalizeEbayProducts(results);
-  
-  // fs.writeFileSync("ebay_products.json", JSON.stringify(normalizedProducts, null, 2));
 
   return normalizedProducts;
 }
 
-/**
- * Normalize eBay product data to match expected format
- * - Parse price strings to numbers
- * - Filter out junk/banner products
- * - Handle null values
- */
 function normalizeEbayProducts(products) {
   const junkTitlePatterns = [
     /^shop on ebay$/i,
@@ -178,17 +167,18 @@ function normalizeEbayProducts(products) {
 
   return products
     .map(product => {
-      // Parse price string to number
       let priceNum = 0;
       if (product.price) {
-        // Remove currency symbols, commas, spaces
         const priceStr = product.price.replace(/[$£€,\s]/g, '');
         priceNum = parseFloat(priceStr);
       }
 
+      const productId = product.link ? product.link.split('/').pop() : null;
+
       return {
+        id: productId,
         title: product.title,
-        name: product.title, // Add name alias for compatibility
+        name: product.title,
         price: priceNum || 0,
         link: product.link,
         image: product.image,
@@ -197,14 +187,11 @@ function normalizeEbayProducts(products) {
       };
     })
     .filter(product => {
-      // Filter out junk products
       if (!product.title || product.title.length < 3) return false;
       
-      // Check against junk patterns
       const isJunk = junkTitlePatterns.some(pattern => pattern.test(product.title));
       if (isJunk) return false;
 
-      // Require valid price
       if (!product.price || product.price <= 0) return false;
 
       if (!product.link) return false;

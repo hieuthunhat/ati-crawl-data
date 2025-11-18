@@ -4,9 +4,6 @@ import aiConfig from '../../config/ai-config.js';
 let genAI = null;
 let model = null;
 
-/**
- * Initialize Gemini AI
- */
 export const initializeGemini = () => {
   if (!aiConfig.gemini.apiKey) {
     console.warn('Gemini API key not configured - AI evaluation disabled');
@@ -21,7 +18,7 @@ export const initializeGemini = () => {
         generationConfig: {
           temperature: aiConfig.gemini.temperature,
           maxOutputTokens: aiConfig.gemini.maxTokens,
-          responseMimeType: "application/json", // Force JSON output
+          responseMimeType: "application/json",
         },
       });
       console.log('Gemini AI initialized with JSON mode');
@@ -33,16 +30,12 @@ export const initializeGemini = () => {
   return model;
 };
 
-/**
- * Build evaluation prompt for Gemini
- */
 const buildEvaluationPrompt = (products, criteria) => {
   const {
     weights = aiConfig.defaultWeights,
     thresholds = aiConfig.defaultThresholds,
   } = criteria;
 
-  // Format products list
   const formattedProducts = products.map((p, i) => {
     const price = p.price || 0;
     const originalPrice = p.original_price || p.list_price || price;
@@ -68,14 +61,11 @@ const buildEvaluationPrompt = (products, criteria) => {
     return productText;
   }).join('\n\n');
 
-  // Calculate percentages
   const profitWeightPct = (weights.profitWeight * 100).toFixed(0);
   const reviewWeightPct = (weights.reviewWeight * 100).toFixed(0);
   const trendWeightPct = (weights.trendWeight * 100).toFixed(0);
   const minProfitPct = (thresholds.minProfitMargin * 100).toFixed(0);
   const minScorePct = (thresholds.minFinalScore * 100).toFixed(0);
-
-  // Build prompt using string concatenation
   const prompt = [
     'You are a professional Vietnamese e-commerce product analyst specializing in dropshipping for Shopify merchants.',
     '',
@@ -159,9 +149,6 @@ const buildEvaluationPrompt = (products, criteria) => {
   return prompt;
 };
 
-/**
- * Evaluate products with Gemini AI
- */
 export const evaluateProducts = async (products, criteria = {}) => {
   try {
     const aiModel = initializeGemini();
@@ -183,13 +170,9 @@ export const evaluateProducts = async (products, criteria = {}) => {
 
     console.log('Raw Gemini response length:', text.length);
 
-    // Clean response (remove markdown code blocks)
     text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-    // Extract JSON from response (in case there's extra text)
     let jsonText = text;
-    
-    // Try to find JSON object boundaries
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}');
     
@@ -197,35 +180,27 @@ export const evaluateProducts = async (products, criteria = {}) => {
       jsonText = text.substring(jsonStart, jsonEnd + 1);
     }
 
-    // Parse JSON with better error handling
     let evaluation;
     try {
       evaluation = JSON.parse(jsonText);
     } catch (parseError) {
       console.error('JSON parse error:', parseError.message);
       
-      // Show problematic snippet
       const errorPos = parseInt(parseError.message.match(/\d+/)?.[0]) || 0;
       const snippetStart = Math.max(0, errorPos - 100);
       const snippetEnd = Math.min(jsonText.length, errorPos + 100);
       console.error('Problematic JSON snippet:', jsonText.substring(snippetStart, snippetEnd));
       
-      // Try multiple fix strategies
       let fixedJson = jsonText;
       
-      // Strategy 1: Remove trailing commas
       fixedJson = fixedJson.replace(/,(\s*[}\]])/g, '$1');
-      
-      // Strategy 2: Remove control characters
       fixedJson = fixedJson.replace(/[\u0000-\u001F]+/g, '');
       
-      // Strategy 3: Fix incomplete JSON (add missing closing braces)
       const openBraces = (fixedJson.match(/{/g) || []).length;
       const closeBraces = (fixedJson.match(/}/g) || []).length;
       const openBrackets = (fixedJson.match(/\[/g) || []).length;
       const closeBrackets = (fixedJson.match(/\]/g) || []).length;
       
-      // Add missing closing braces/brackets
       if (openBraces > closeBraces) {
         const missingBraces = openBraces - closeBraces;
         console.log(`Adding ${missingBraces} missing closing braces`);
@@ -244,20 +219,15 @@ export const evaluateProducts = async (products, criteria = {}) => {
         console.error('Could not parse JSON even after fixes');
         console.error('Second error:', secondError.message);
         
-        // Strategy 4: Try to salvage partial data more aggressively
         try {
           console.log('Attempting aggressive salvage...');
           
-          // Find the last complete product object
           let truncatedJson = fixedJson;
           
-          // Remove incomplete trailing data after last complete }
           const lastCompleteObject = truncatedJson.lastIndexOf('}');
           if (lastCompleteObject > 0) {
             truncatedJson = truncatedJson.substring(0, lastCompleteObject + 1);
           }
-          
-          // Close any open arrays and objects
           truncatedJson = truncatedJson.trim();
           if (!truncatedJson.endsWith(']')) {
             truncatedJson += ']';
@@ -274,7 +244,6 @@ export const evaluateProducts = async (products, criteria = {}) => {
             // Manual reconstruction
             console.log('Manual reconstruction attempt...');
             
-            // Extract just completed product objects
             const productMatches = truncatedJson.match(/\{[^{}]*"productId"[^{}]*"analysis"[^{}]*\}/g);
             if (productMatches && productMatches.length > 0) {
               const productsJson = '[' + productMatches.join(',') + ']';
@@ -293,7 +262,6 @@ export const evaluateProducts = async (products, criteria = {}) => {
             }
           }
         } catch (thirdError) {
-          // Final fallback
           console.error('All salvage attempts failed');
           console.error('Creating empty fallback response.');
           evaluation = {
@@ -333,9 +301,6 @@ export const evaluateProducts = async (products, criteria = {}) => {
   }
 };
 
-/**
- * Check if Gemini is available
- */
 export const isGeminiAvailable = () => {
   return !!aiConfig.gemini.apiKey;
 };

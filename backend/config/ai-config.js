@@ -19,7 +19,7 @@ const aiConfig = {
     minReviewScore: 2.0,
     minReviewCount: 5,
     minProfitMargin: 0.15,
-    minFinalScore: 0.40,
+    minFinalScore: 0.30,
   },
 
   priceTiers: {

@@ -1,4 +1,4 @@
-import aiConfig from '../config/ai-config.js';
+import aiConfig from '../../config/ai-config.js';
 
 
 //Calculate selling price based on cost price

@@ -1,7 +1,7 @@
 import { scrapeEbayWithPuppeteer } from "../services/eBay/ebayScrapeService.js";
 import { scrapeTikiWithAPI } from "../services/Tiki/tikiScrapeService.js";
-import geminiService from "../services/geminiService.js";
-import scoringService from "../services/productScoringService.js";
+import geminiService from "../services/evaluation/geminiService.js";
+import scoringService from "../services/evaluation/productScoringService.js";
 
 /**
  * Transform evaluation data to simplified format
@@ -38,6 +38,12 @@ const transformToSimplifiedFormat = (evaluationData) => {
                        originalProduct.imageUrl || 
                        'https://via.placeholder.com/150';
 
+      // Handle different URL field names from original product
+      const productUrl = originalProduct.link || 
+                         originalProduct.url || 
+                         originalProduct.productUrl || 
+                         '';
+
       return {
         id: String(scoredProduct.productId || `sp${index + 1}`),
         name: scoredProduct.productName || 'Unknown Product',
@@ -45,6 +51,7 @@ const transformToSimplifiedFormat = (evaluationData) => {
         avgRating: Number(scoredProduct.rating || 0),
         ratingNum: Number(scoredProduct.reviewCount || 0),
         imageUrl,
+        url: productUrl,
       };
     });
 };

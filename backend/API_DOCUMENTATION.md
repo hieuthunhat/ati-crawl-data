@@ -1,480 +1,400 @@
-# 📚 API Documentation
-## Tiki Backend API with AI Evaluation - Complete Reference
+API Documentation
 
-**Base URL**: `http://localhost:3000`
+Tiki Backend API with AI Evaluation
 
----
+Base URL: http://localhost:3000
 
-## 📋 Table of Contents
 
-1. [Authentication](#authentication)
-2. [Main Endpoint - Scraping with AI Evaluation](#main-endpoint)
-   - [Scrape Products with Automatic AI Evaluation](#scrape-products-with-automatic-ai-evaluation)
-   - [Retrieve Evaluation by ID](#retrieve-evaluation-by-id)
-3. [Error Handling](#error-handling)
-4. [Rate Limiting](#rate-limiting)
-5. [Response Formats](#response-formats)
+Table of Contents:
+1. Overview
+2. Endpoints
+   2.1. Scrape Products with AI Evaluation
+   2.2. Shopify Integration
+3. Request/Response Formats
+4. Error Handling
+5. Configuration
 
----
 
-## 🔐 Authentication
+1. Overview
+This API provides product scraping and AI evaluation services for e-commerce platforms. The system scrapes product data from Tiki or eBay, applies mathematical scoring, evaluates the top products using Google Gemini AI, and returns a simplified JSON response optimized for frontend consumption.
 
-Currently, the API does not require authentication. Firebase-backed storage uses optional user IDs for filtering evaluation history.
+Key Features:
+- Multi-platform scraping (Tiki, eBay)
+- Automatic mathematical scoring based on profit, reviews, and trends
+- AI evaluation using Google Gemini 2.0 Flash
+- Direct JSON response without Firebase storage
+- Simplified product format for easy integration
 
-**Future**: OAuth 2.0 / JWT authentication planned.
+Processing Pipeline:
+1. Scraping: Extract products from selected platform (2-5 seconds)
+2. Mathematical Scoring: Calculate profit, review, and trend scores (1-2 seconds)
+3. AI Evaluation: Gemini analyzes top 10 scored products (10-20 seconds)
+4. Response Formatting: Transform to simplified JSON format (instant)
 
----
+Total Response Time: 15-30 seconds
 
-## 🛒 Main Endpoint
 
-### **Scrape Products with Automatic AI Evaluation**
+2. Endpoints
 
-Scrapes products from supported platforms (Tiki, Chotot, eBay) and **automatically evaluates them with AI**.
+2.1. Scrape Products with AI Evaluation
 
-**Endpoint**: `POST /api/crawledProducts`
+Endpoint: POST /api/crawl-products
 
-**Request Body**:
-````json
+Description: Scrapes products from the specified platform and automatically evaluates them using AI. Returns only the top 10 products that passed quality thresholds and were evaluated by Gemini AI.
+
+Request Body:
+
 {
   "productName": "tai nghe bluetooth",
   "platform": "tiki",
   "criteria": {
     "weights": {
-      "profitWeight": 0.4,
+      "profitWeight": 0.6,
       "reviewWeight": 0.4,
-      "trendWeight": 0.2
+      "trendWeight": 0.0
     },
     "thresholds": {
-      "minReviewScore": 4.0,
+      "minReviewScore": 2.0,
       "minReviewCount": 10,
       "minProfitMargin": 0.20,
       "minFinalScore": 0.50
     }
-  },
-  "storeResults": true,
-  "userId": "user123",
-  "sessionId": "session456"
+  }
 }
-````
 
-**Parameters**:
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `productName` | string | Yes | Search query string (e.g., "tai nghe", "iphone") |
-| `platform` | string | Yes | Platform to scrape: `tiki`, `chotot`, `ebay` |
-| `criteria` | object | No | Custom AI evaluation criteria |
-| `criteria.weights` | object | No | Scoring weights (must sum to 1.0) - defaults from config |
-| `criteria.thresholds` | object | No | Quality threshold values - defaults from config |
-| `userId` | string | No | User identifier for metadata tracking (optional) |
-| `sessionId` | string | No | Session identifier for metadata tracking (optional) |
+Request Parameters:
 
-**Processing Pipeline**:
-1. **Scraping** - Extracts products from selected platform (2-5 seconds)
-2. **Mathematical Scoring** - Calculates profit, review, trend scores (1-2 seconds)
-3. **AI Evaluation** - Gemini analyzes top 10 products (10-20 seconds)
-4. **Response Formatting** - Transforms to clean JSON format (instant)
-5. **Response** - Returns formatted evaluated products directly
+Parameter: productName
+Type: string
+Required: Yes
+Description: Search query string (e.g., "tai nghe", "iphone", "laptop")
 
-**Key Feature**: Direct response without Firebase storage - faster and simpler pipeline.
+Parameter: platform
+Type: string
+Required: Yes
+Description: Platform to scrape. Supported values: "tiki", "ebay"
 
-**Response** (200 OK):
-````json
+Parameter: criteria
+Type: object
+Required: No
+Description: Custom AI evaluation criteria. If not provided, uses defaults from ai-config.js
+
+Parameter: criteria.weights
+Type: object
+Required: No
+Description: Scoring weights for final score calculation. Must sum to 1.0.
+Fields:
+  - profitWeight: Weight for profit score (0-1)
+  - reviewWeight: Weight for review score (0-1)
+  - trendWeight: Weight for trend score (0-1)
+
+Parameter: criteria.thresholds
+Type: object
+Required: No
+Description: Quality thresholds for filtering products
+Fields:
+  - minReviewScore: Minimum rating (0-5)
+  - minReviewCount: Minimum number of reviews
+  - minProfitMargin: Minimum profit margin (0-1, e.g., 0.20 = 20%)
+  - minFinalScore: Minimum final score (0-1)
+
+Success Response (200 OK):
+
 {
   "success": true,
   "message": "Scraping and AI evaluation completed successfully",
   "platform": "tiki",
   "query": "tai nghe bluetooth",
-  "totalProducts": 50,
+  "totalProducts": 10,
   "products": [
     {
-      "id": "123456",
-      "name": "Tai nghe Bluetooth Sony WH-1000XM5",
-      "price": 8000000,
-      "avgRating": 4.8,
-      "ratingNum": 500,
-      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/abc123.jpg"
-    },
-    {
-      "id": "123457",
-      "name": "Tai nghe Bluetooth JBL Tune 510BT",
-      "price": 890000,
-      "avgRating": 4.5,
-      "ratingNum": 1250,
-      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/def456.jpg"
-    },
-    {
-      "id": "123458",
-      "name": "Tai nghe Bluetooth Apple AirPods Pro",
-      "price": 5990000,
-      "avgRating": 4.9,
-      "ratingNum": 3200,
-      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/ghi789.jpg"
+      "id": "183743642",
+      "name": "Lenovo ThinkPad L460",
+      "price": 8036000,
+      "avgRating": 4.6,
+      "ratingNum": 8,
+      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/14/8c/81/fb9e28fb39287ef103ee0e9765f98564.png",
+      "url": "https://tiki.vn/lenovo-thinkpad-l460-p183743642.html"
     }
-    // ... more products
   ]
 }
-````
 
-**Key Changes from Previous Version**:
-- ✅ **Evaluated products returned**: Instead of raw scraped products, the response now contains AI-evaluated products from Firebase
-- ✅ **Firebase ID included**: `evaluationId` can be used to retrieve results later
-- ✅ **Summary statistics**: Quick overview of scraping and evaluation results
-- ✅ **No raw scraped data**: Scraped products are stored in Firebase but not returned (reduces response size)
-- ✅ **Retrieved timestamp**: Shows when data was fetched from Firebase
+Response Fields:
 
-**Error Responses**:
-- `400 Bad Request` - Invalid platform, missing productName, or invalid criteria
-- `500 Internal Server Error` - Scraping failed or AI evaluation error
-- `503 Service Unavailable` - Gemini API unavailable (evaluation skipped, scraping still returns)
+Field: success
+Type: boolean
+Description: Indicates whether the request was successful
 
-**Notes**:
-- **All AI parameters are optional** - If not provided, uses defaults from `ai-config.js`
-- **Partial criteria merge** - Provide only weights or thresholds you want to override
-- **Response time**: Typically 15-30 seconds (scraping + AI evaluation)
-- **Graceful degradation**: If AI fails, you still get scraped products
-- **Top 10 rule**: Only top 10 scored products sent to AI (performance optimization)
+Field: message
+Type: string
+Description: Human-readable status message
 
----
+Field: platform
+Type: string
+Description: Platform that was scraped
 
-### **Retrieve Evaluation by ID**
+Field: query
+Type: string
+Description: Search query that was used
 
-Get previously stored evaluation results from Firebase using the evaluation ID.
+Field: totalProducts
+Type: number
+Description: Number of products returned (maximum 10)
 
-**Endpoint**: `GET /api/evaluations/:id`
+Field: products
+Type: array
+Description: Array of simplified product objects
 
-**URL Parameters**:
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string | Yes | Firebase evaluation document ID (from previous response) |
+Product Object Structure:
 
-**Example Request**:
-````bash
-GET /api/evaluations/eval_1730887800_abc123
-````
+Field: id
+Type: string
+Description: Unique product identifier
 
-**Response** (200 OK):
-````json
+Field: name
+Type: string
+Description: Product name or title
+
+Field: price
+Type: number
+Description: AI-calculated suggested selling price in VND (includes markup and fees). This is NOT the cost price. Rounded to nearest integer.
+
+Field: avgRating
+Type: number
+Description: Average customer rating (0-5)
+
+Field: ratingNum
+Type: number
+Description: Total number of ratings/reviews
+
+Field: imageUrl
+Type: string
+Description: Product thumbnail image URL
+
+Field: url
+Type: string
+Description: Direct link to product page on original platform
+
+Error Response - Missing Required Fields (400 Bad Request):
+
+{
+  "success": false,
+  "error": "Missing required fields"
+}
+
+Error Response - Invalid Platform (400 Bad Request):
+
+{
+  "success": false,
+  "error": "Unsupported platform"
+}
+
+Error Response - Server Error (500 Internal Server Error):
+
+{
+  "success": false,
+  "error": "Scraping failed or AI evaluation error"
+}
+
+Error Response - No Products Found (200 OK):
+
 {
   "success": true,
-  "message": "Evaluation retrieved successfully",
-  "evaluationId": "eval_1730887800_abc123",
+  "message": "Scraping completed (no AI evaluation)",
   "platform": "tiki",
-  "query": "tai nghe bluetooth",
-  "totalProducts": 50,
-  "products": [
-    {
-      "id": "123456",
-      "name": "Tai nghe Bluetooth Sony WH-1000XM5",
-      "price": 8000000,
-      "avgRating": 4.8,
-      "ratingNum": 500,
-      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/abc123.jpg"
+  "query": "nonexistent product",
+  "totalProducts": 0,
+  "products": []
+}
+
+Notes:
+- Only top 10 scored products are sent to AI for evaluation
+- Products must pass quality thresholds before AI evaluation
+- Response contains ONLY AI-evaluated products (not all scraped products)
+- Price is the suggested selling price calculated by AI, not the cost price
+- All prices are rounded to integers (no decimal places)
+- Firebase storage has been removed - no evaluation IDs returned
+
+
+2.2. Shopify Integration
+
+Endpoint: POST /api/products
+
+Description: Batch create products in Shopify store. This endpoint is separate from the scraping/evaluation pipeline and is used for direct product import to Shopify.
+
+Note: This endpoint requires Shopify configuration in environment variables.
+
+
+
+3. Request/Response Formats
+
+Example Request 1: Basic Scraping with Default Criteria
+
+POST /api/crawl-products
+Content-Type: application/json
+
+{
+  "productName": "tai nghe",
+  "platform": "tiki"
+}
+
+Result: Uses default criteria from ai-config.js
+
+Example Request 2: Custom Criteria - High Profit Focus
+
+POST /api/crawl-products
+Content-Type: application/json
+
+{
+  "productName": "laptop gaming",
+  "platform": "tiki",
+  "criteria": {
+    "weights": {
+      "profitWeight": 0.7,
+      "reviewWeight": 0.3,
+      "trendWeight": 0.0
     },
-    {
-      "id": "123457",
-      "name": "Tai nghe Bluetooth JBL Tune 510BT",
-      "price": 890000,
-      "avgRating": 4.5,
-      "ratingNum": 1250,
-      "imageUrl": "https://salt.tikicdn.com/cache/280x280/ts/product/def456.jpg"
+    "thresholds": {
+      "minReviewScore": 3.0,
+      "minReviewCount": 5,
+      "minProfitMargin": 0.25,
+      "minFinalScore": 0.60
     }
-    // ... more products
-  ]
-}
-````
-
-**Product Object Structure**:
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Unique product identifier |
-| `name` | string | Product name/title |
-| `price` | number | **Suggested selling price** (AI-calculated with markup + fees) in VND |
-| `avgRating` | number | Average rating (0-5) |
-| `ratingNum` | number | Number of ratings/reviews |
-| `imageUrl` | string | Product image URL |
-
-**Key Changes from Previous Version**:
-- ✅ **Simplified response**: Clean, flat product array instead of nested complex structure
-- ✅ **Frontend-ready format**: Direct mapping to UI components
-- ✅ **Consistent field names**: `avgRating` and `ratingNum` across all platforms
-- ✅ **Smart pricing**: Returns AI-calculated suggested selling price (not cost price)
-- ✅ **Reduced payload size**: Only essential product information returned
-- ✅ **AI evaluation data**: Stored in Firebase but not returned (keeps response clean)
-
-**Error Responses**:
-
-**404 Not Found** - Evaluation ID doesn't exist:
-````json
-{
-  "success": false,
-  "error": "Evaluation not found",
-  "details": "Evaluation with ID eval_invalid123 not found"
-}
-````
-
-**400 Bad Request** - Missing evaluation ID:
-````json
-{
-  "success": false,
-  "error": "Evaluation ID is required"
-}
-````
-
-**Use Cases**:
-- 📥 **Retrieve historical evaluations** without re-scraping
-- 📊 **Compare evaluations** from different time periods
-- 🔄 **Share evaluation results** using the ID
-- 💾 **Reduce API calls** by caching evaluation IDs
-
----
-
-## 🚨 Error Handling
-
-### **Standard Error Response Format**
-
-````json
-{
-  "success": false,
-  "error": "Error message describing what went wrong",
-  "details": "Additional error details (stack trace in development)"
-}
-````
-
-### **HTTP Status Codes**
-
-| Code | Meaning | When Used |
-|------|---------|-----------|
-| `200` | OK | Successful request |
-| `400` | Bad Request | Invalid input parameters |
-| `404` | Not Found | Resource doesn't exist |
-| `500` | Internal Server Error | Server/service failure |
-| `503` | Service Unavailable | External service down (Gemini, Firebase) |
-
----
-
-## ⏱️ Rate Limiting
-
-### **Scraping Endpoint**
-- **Limit**: 20 requests per minute per IP
-- **Response Time**: 15-30 seconds (includes AI evaluation)
-- **Cooldown**: 1 minute after limit reached
-
-### **Rate Limit Headers**
-````
-X-RateLimit-Limit: 20
-X-RateLimit-Remaining: 15
-X-RateLimit-Reset: 1699282800
-````
-
-**Note**: AI evaluation is automatic and included in scraping time. No separate rate limit for AI.
-
----
-
-## 📊 Response Formats
-
-### **Product Object**
-
-````json
-{
-  "id": number,
-  "name": string,
-  "price": number,
-  "original_price": number,
-  "discount_rate": number,
-  "rating_average": number (0-5),
-  "review_count": number,
-  "quantity_sold": {
-    "value": number,
-    "text": string
-  },
-  "seller": {
-    "name": string,
-    "id": number
-  },
-  "thumbnail_url": string,
-  "url_path": string,
-  "badges": string[]
-}
-````
-
-### **Scored Product Object**
-
-````json
-{
-  "productId": number,
-  "productName": string,
-  "costPrice": number,
-  "sellingPrice": number,
-  "netProfit": number,
-  "profitMargin": number,
-  "scores": {
-    "profitScore": number (0-1),
-    "reviewScore": number (0-1),
-    "trendScore": number (0-1),
-    "finalScore": number (0-1)
-  },
-  "meetsThresholds": boolean,
-  "rating": number,
-  "reviewCount": number
-}
-````
-
-### **AI Evaluated Product Object**
-
-````json
-{
-  "productId": number,
-  "productName": string,
-  "rank": number,
-  "scores": {
-    "profitScore": number (0-1),
-    "reviewScore": number (0-1),
-    "trendScore": number (0-1),
-    "finalScore": number (0-1)
-  },
-  "pricing": {
-    "costPrice": number,
-    "suggestedSellingPrice": number,
-    "shopifyFee": number,
-    "netProfit": number,
-    "profitMargin": number
-  },
-  "analysis": {
-    "strengths": string[],
-    "weaknesses": string[],
-    "riskLevel": "low" | "medium" | "high",
-    "recommendation": string
   }
 }
-````
 
----
+Result: Prioritizes profit (70%) over reviews (30%), requires higher profit margin (25%)
 
-## 🔍 Query Examples
+Example Request 3: Custom Criteria - Review Focus
 
-### **Example 1: Basic Scraping with Default AI Evaluation**
+POST /api/crawl-products
+Content-Type: application/json
 
-````bash
-curl -X POST http://localhost:3000/api/crawledProducts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "productName": "tai nghe",
-    "platform": "tiki"
-  }'
-````
-
-**Result**: Scrapes products + AI evaluation with default criteria
-
----
-
-### **Example 2: Custom AI Criteria**
-
-````bash
-curl -X POST http://localhost:3000/api/crawledProducts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "productName": "iphone 15",
-    "platform": "tiki",
-    "criteria": {
-      "weights": {
-        "profitWeight": 0.5,
-        "reviewWeight": 0.3,
-        "trendWeight": 0.2
-      },
-      "thresholds": {
-        "minReviewScore": 4.5,
-        "minReviewCount": 50,
-        "minProfitMargin": 0.25
-      }
+{
+  "productName": "iphone 15",
+  "platform": "tiki",
+  "criteria": {
+    "weights": {
+      "profitWeight": 0.3,
+      "reviewWeight": 0.7,
+      "trendWeight": 0.0
     },
-    "userId": "user123"
-  }'
-````
-
-**Result**: Prioritizes profit (50%) over reviews (30%)
-
----
-
-### **Example 3: Without Firebase Storage**
-
-````bash
-curl -X POST http://localhost:3000/api/crawledProducts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "productName": "laptop",
-    "platform": "chotot",
-    "storeResults": false
-  }'
-````
-
-**Result**: Scrapes + evaluates but doesn't save to Firebase
-
----
-
-### **Example 4: With Session Tracking**
-
-````bash
-curl -X POST http://localhost:3000/api/crawledProducts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "productName": "camera",
-    "platform": "ebay",
-    "userId": "user456",
-    "sessionId": "research-session-001"
-  }'
-````
-
-**Result**: Groups this evaluation under specific session for later filtering
-
----
-
-## 📝 Notes
-
-### **Automatic AI Integration**
-- **AI evaluation runs automatically** after every scraping request
-- **No separate endpoint needed** - One request does it all
-- **Optional parameters** - All AI settings have sensible defaults
-- **Graceful degradation** - If AI fails, you still get scraped products
-
-### **Data Persistence**
-- Evaluations stored in Firebase Firestore collection: `ai-evaluations`
-- Each evaluation gets unique ID: `eval_{timestamp}_{random}`
-- Stored indefinitely unless manually deleted
-- Queryable by userId, sessionId, timestamp (via Firebase directly)
-
-### **AI Model Behavior**
-- **Model**: Gemini 2.0 Flash Experimental (`gemini-2.0-flash-exp`)
-- **Temperature**: 0.7 provides balanced creativity/consistency
-- **Top 20 limit**: Only top 20 scored products sent to AI (performance optimization)
-- **Response time**: 10-20 seconds for AI analysis
-- Mathematical scoring applied to all products first
-
-### **Performance Considerations**
-- **Total response time**: 15-30 seconds (scraping 2-5s + AI 10-20s + storage 1s)
-- **Timeout**: Server configured for 60-second timeout
-- **Concurrent requests**: System handles multiple simultaneous scrapes
-- **Memory**: AI processing uses ~150MB additional RAM
-
-### **Default Criteria**
-If not provided in request, these defaults are used:
-````json
-{
-  "weights": {
-    "profitWeight": 0.4,
-    "reviewWeight": 0.4,
-    "trendWeight": 0.2
-  },
-  "thresholds": {
-    "minReviewScore": 4.0,
-    "minReviewCount": 10,
-    "minProfitMargin": 0.20,
-    "minFinalScore": 0.50
+    "thresholds": {
+      "minReviewScore": 4.5,
+      "minReviewCount": 50,
+      "minProfitMargin": 0.15,
+      "minFinalScore": 0.50
+    }
   }
 }
-````
 
----
+Result: Prioritizes reviews (70%) over profit (30%), requires high rating (4.5+) and many reviews (50+)
 
-**Version**: 2.0.0  
-**Last Updated**: November 6, 2025  
-**API Stability**: Beta
+
+
+4. Error Handling
+
+Standard Error Response Format:
+
+{
+  "success": false,
+  "error": "Error message describing what went wrong"
+}
+
+HTTP Status Codes:
+
+Code: 200
+Description: Successful request. Check "success" field in response body.
+
+Code: 400
+Description: Bad Request. Invalid input parameters or missing required fields.
+
+Code: 500
+Description: Internal Server Error. Server or service failure (scraping, AI, database).
+
+Common Error Scenarios:
+
+Scenario: Missing productName
+Status: 400
+Response: {"success": false, "error": "Missing required fields"}
+
+Scenario: Invalid platform
+Status: 400
+Response: {"success": false, "error": "Unsupported platform"}
+
+Scenario: Scraping service failed
+Status: 500
+Response: {"success": false, "error": "Scraping failed"}
+
+Scenario: AI evaluation failed
+Status: 500
+Response: {"success": false, "error": "AI evaluation failed"}
+
+Scenario: No products meet thresholds
+Status: 200
+Response: {"success": true, "totalProducts": 0, "products": []}
+
+
+
+5. Configuration
+
+Default Criteria (from ai-config.js):
+
+Weights:
+- profitWeight: 0.6 (60%)
+- reviewWeight: 0.4 (40%)
+- trendWeight: 0.0 (0%)
+
+Thresholds:
+- minReviewScore: 2.0 stars
+- minReviewCount: 10 reviews
+- minProfitMargin: 0.20 (20%)
+- minFinalScore: 0.50 (50%)
+
+Pricing Strategy (Markup Calculation):
+
+Products 1-50,000 VND: 20% markup
+Products 51,000-200,000 VND: 30% markup
+Products 200,001+ VND: 40% markup
+
+Shopify Fees:
+- Transaction fee: 2.9% of selling price
+- Fixed fee: 0.30 USD per transaction (~7,500 VND)
+
+AI Model Configuration:
+
+Model: gemini-2.0-flash-exp (Google Gemini 2.0 Flash Experimental)
+Temperature: 0.7
+Max Output Tokens: 16384
+Response Format: JSON
+
+Performance Limits:
+
+Maximum products scraped per request: 150 (3 pages x 50 products)
+Maximum products scored: All that pass basic validation
+Maximum products evaluated by AI: 10 (top scored products)
+Maximum products returned: 10
+Request timeout: 60 seconds
+Expected response time: 15-30 seconds
+
+Platform-Specific Notes:
+
+Tiki:
+- API-based scraping (faster, more reliable)
+- Returns structured data with ratings and reviews
+- URL format: https://tiki.vn/{url_key}.html
+
+eBay:
+- Puppeteer-based scraping (slower, less reliable)
+- May have fewer reviews than Tiki
+- Scoring adjusted for lower review counts
+
+Environment Variables Required:
+
+GEMINI_API_KEY: Google Gemini API key (required for AI evaluation)
+PORT: Server port (default: 3000)
+NODE_ENV: Environment mode (development/production)
+
+Optional:
+SHOPIFY_SHOP_NAME: Shopify store name (for /api/products endpoint)
+SHOPIFY_ACCESS_TOKEN: Shopify API token (for /api/products endpoint)

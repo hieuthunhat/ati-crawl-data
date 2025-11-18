@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import aiConfig from '../config/ai-config.js';
+import aiConfig from '../../config/ai-config.js';
 
 let genAI = null;
 let model = null;

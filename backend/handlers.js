@@ -2,8 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import router from "./routes/routes.js";
-import geminiService from './services/geminiService.js';
-import './config/firebase-db.js';
+import geminiService from './services/evaluation/geminiService.js';
 
 dotenv.config();
 const app = express();
